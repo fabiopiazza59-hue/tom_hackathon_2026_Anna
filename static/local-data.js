@@ -2,6 +2,7 @@
 import { buildBootstrap, slug, PEOPLE_KINDS } from './content.js';
 import { QUESTION_BANK } from './question-bank.js';
 import { bankRows, findEntry, LEVELS } from './hierarchy.js';
+import { prepareBank, validDays, validPeakHours } from './question-rules.js';
 
 const KEY = 'anna-local-data-v1';
 const BACKUP = 'anna-before-csv-v1';
@@ -85,9 +86,11 @@ export function createLocalApi({ storage, authorize }) {
     const area = url.pathname.split('/').pop(), action = url.searchParams.get('action');
     const db = load();
     if (area === 'data' && method === 'GET' && action === 'bootstrap') {
-      return { bank: structuredClone(db.bank), ...buildBootstrap({
-        ...db, ...bankRows(db.bank), patient: { ...db.patient, admin_pin_hash: 'server-managed' },
-        isAdmin: await authorize(false),
+      const isAdmin = await authorize(false);
+      const bank = isAdmin ? structuredClone(db.bank) : prepareBank(db.bank, db.people, new Date(), db.patient.settings.context || 'tous');
+      return { bank, ...buildBootstrap({
+        ...db, ...bankRows(bank), patient: { ...db.patient, admin_pin_hash: 'server-managed' },
+        isAdmin,
       }) };
     }
     if (area !== 'admin' || method !== 'POST') fail('Action inconnue', 404);
@@ -117,6 +120,16 @@ export function createLocalApi({ storage, authorize }) {
       });
       if (level === 'category') { node.orderYes = order(body.orderYes); node.orderNo = order(body.orderNo); }
       if (level === 'subcategory') node.branch = branch;
+      const weight = Number(body.weight ?? node.weight ?? 1);
+      if (!Number.isFinite(weight) || weight < 0) fail('Poids invalide');
+      const days = text(body.days ?? node.days ?? '', 120, true), peakHours = text(body.peakHours ?? node.peakHours ?? '', 200, true);
+      if (!validDays(days)) fail('Jours invalides : utilisez weekend, semaine ou les noms des jours séparés par une virgule');
+      if (!validPeakHours(peakHours)) fail('Créneaux invalides : utilisez par exemple 8-10;12-13');
+      const personId = body.personId === '' ? null : body.personId ?? node.personId ?? null;
+      if (personId && !db.people.some(p => p.id === personId)) fail('Personne liée introuvable');
+      const oppositeId = body.oppositeId === '' ? null : body.oppositeId ?? node.oppositeId ?? null;
+      if (oppositeId && (oppositeId === node.id || findEntry(db.bank, oppositeId)?.node.level !== level)) fail('Question contraire invalide');
+      Object.assign(node, { weight, days, peakHours, pinned: body.pinned ?? node.pinned ?? false, weekendOrder: order(body.weekendOrder ?? node.weekendOrder), personId, oppositeId });
       if (!existing) parent.children.push(node);
       else if (parent && parent !== existing.parent) {
         existing.parent.children = existing.parent.children.filter(n => n.id !== node.id);
@@ -127,11 +140,37 @@ export function createLocalApi({ storage, authorize }) {
       const entry = findEntry(db.bank, body.id);
       if (!entry?.parent) fail('La question de départ ne peut pas être supprimée');
       entry.parent.children = entry.parent.children.filter(n => n.id !== body.id);
-    } else if (action === 'add-person') {
-      const name = text(body.name, 60), id = `${slug(name)}-${suffix()}`;
-      db.people.push({ id, name, role: text(body.role || '', 80, true), kind: PEOPLE_KINDS.includes(body.kind) ? body.kind : 'Famille' });
+      const clearLinks = node => { if (node.oppositeId && !findEntry(db.bank, node.oppositeId)) node.oppositeId = null; node.children.forEach(clearLinks); };
+      clearLinks(db.bank.root);
+    } else if (action === 'add-person' || action === 'save-person') {
+      const old = action === 'save-person' ? db.people.find(p => p.id === body.id) : null;
+      if (action === 'save-person' && !old) fail('Personne introuvable');
+      const name = text(body.name, 60), id = old?.id || `${slug(name)}-${suffix()}`;
+      const person = { ...old, id, name, role: text(body.role || '', 80, true), kind: PEOPLE_KINDS.includes(body.kind) ? body.kind : old?.kind || 'Famille' };
+      person.gender = body.gender ?? old?.gender ?? '';
+      if (!['', 'F', 'H'].includes(person.gender)) fail('Genre invalide');
+      person.precision = text(body.precision ?? old?.precision ?? '', 150, true);
+      person.days = text(body.days ?? old?.days ?? '', 120, true);
+      person.weight = Number(body.weight ?? old?.weight ?? 1);
+      if (!validDays(person.days) || !Number.isFinite(person.weight) || person.weight < 0) fail('Jours ou poids invalides');
+      for (const flag of ['groupClose', 'groupCare', 'groupCentre', 'canContact', 'canSee', 'canTalk', 'referent']) person[flag] = body[flag] ?? old?.[flag] ?? flag.startsWith('can');
+      if (old) {
+        const rename = node => {
+          if (node.personId === id) for (const key of ['label', 'q', 'yesText', 'noText']) {
+            if (typeof node[key] === 'string') {
+              node[key] = node[key].split(old.name).join(name);
+              if (old.role) node[key] = node[key].split(old.role).join(person.role);
+            }
+          }
+          node.children.forEach(rename);
+        };
+        rename(db.bank.root);
+        db.people[db.people.indexOf(old)] = person;
+      } else db.people.push(person);
       result = { id };
     } else if (action === 'delete-person') {
+      const linked = node => node.personId === body.id || node.children.some(linked);
+      if (linked(db.bank.root)) fail('Cette personne est liée à des questions. Retirez ou modifiez ces liens avant de la supprimer.');
       db.people = db.people.filter(p => p.id !== body.id);
     } else if (action === 'save-plan') {
       db.patient.daily_plan = text(body.plan || '', 4000, true);

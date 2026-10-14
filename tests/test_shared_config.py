@@ -66,7 +66,9 @@ def test_only_authenticated_admin_can_write_and_revision_is_required(shared_stor
 def test_configuration_always_includes_default_settings_and_people(shared_store):
     client = TestClient(app)
     data = client.get("/api/config").json()
-    response = client.put("/api/config", json={"bank": data["config"]["bank"]}, auth=AUTH, headers={"If-Match": data["revision"]})
+    bank = deepcopy(data["config"]["bank"])
+    bank["root"]["children"] = []
+    response = client.put("/api/config", json={"bank": bank}, auth=AUTH, headers={"If-Match": data["revision"]})
     assert response.status_code == 200
     config = client.get("/api/config").json()["config"]
     assert config["patient"]["settings"]["context"] == "tous"
@@ -137,3 +139,14 @@ def test_blob_initialization_race_is_reported_as_a_conflict():
     store = BlobConfigStore("vercel_blob_rw_test_secret", transport=httpx.MockTransport(handle))
     with pytest.raises(ConfigConflict):
         store.write(default_config(), '"empty"')
+
+
+@pytest.mark.parametrize("field,value", [("days", "n’importe quand"), ("peakHours", "25-30"), ("weight", -1.5), ("personId", "unknown-person"), ("oppositeId", "q:missing")])
+def test_invalid_new_question_rules_cannot_be_saved(shared_store, field, value):
+    client = TestClient(app)
+    data = client.get("/api/config").json()
+    node = data["config"]["bank"]["root"]["children"][0]["children"][0]["children"][0]
+    node[field] = value
+    response = client.put("/api/config", json=data["config"], auth=AUTH, headers={"If-Match": data["revision"]})
+    assert response.status_code == 422
+    assert not shared_store.exists()

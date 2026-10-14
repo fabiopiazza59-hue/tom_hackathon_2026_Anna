@@ -250,6 +250,6 @@ img.av{object-fit:cover;background:var(--panel-2)}
 .bank-rank{display:inline-block;padding:2px 7px;margin-right:5px;border-radius:6px;background:var(--panel-2);color:var(--muted);font-size:12px;font-weight:400}
 @media(max-width:620px){.bank-toolbar,.bank-row{align-items:stretch;flex-direction:column;gap:8px}.bank-actions{justify-content:flex-start}.bank-children{padding-left:10px}.bank-branch{padding:10px}.bank-row .btn{min-height:44px}}
 
-.seg{grid-template-columns:repeat(3,1fr)}
+.seg{grid-template-columns:repeat(4,1fr)}
 .history-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}.history-head h3{margin:0}.err{color:var(--no)}
 .history-detail{width:100%}.history-detail ol{padding-left:20px}.history-detail li{display:list-item;padding:6px 0}.history-entry{flex-wrap:wrap}

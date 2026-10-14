@@ -5,12 +5,12 @@ import { entries, findEntry, orderedNodes, availableChildren, startHierarchy, an
 
 test('les cinq niveaux et tous les identifiants importés sont présents', () => {
   const all = entries(bank);
-  assert.equal(all.length, 242);
-  assert.equal(new Set(all.map(e => e.node.id)).size, 242);
+  assert.equal(all.length, 253);
+  assert.equal(new Set(all.map(e => e.node.id)).size, 253);
   assert.equal(all.filter(e => e.node.level === 'category').length, 6);
   assert.equal(all.filter(e => e.node.level === 'subcategory').length, 27);
-  assert.equal(all.filter(e => e.node.level === 'question').length, 91);
-  assert.equal(all.filter(e => e.node.level === 'subquestion').length, 117);
+  assert.equal(all.filter(e => e.node.level === 'question').length, 99);
+  assert.equal(all.filter(e => e.node.level === 'subquestion').length, 120);
   assert.equal(findEntry(bank, 'subq:allongee_lit').parent.id, 'q:allongee');
 });
 

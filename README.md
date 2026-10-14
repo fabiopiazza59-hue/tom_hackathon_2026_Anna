@@ -22,19 +22,21 @@ Oui descend au niveau suivant ; Non passe à l’élément suivant du même nive
 
 Les catégories suivent `ordre_si_oui` ou `ordre_si_non` après la réponse à « Ça va ? », avec repli sur `ordre`. Les sous-catégories respectent `branche_oui_non`. Chaque niveau suit ensuite son `ordre` ; les valeurs vides viennent après les valeurs renseignées et conservent l’ordre d’import. Les égalités gardent également l’ordre d’import.
 
-Les quatre CSV originaux sont dans `data/questions/` : **6 catégories, 27 sous-catégories, 91 questions, 117 sous-questions**. L’import vérifie les identifiants et les parents, et produit la banque initiale :
+Les cinq CSV sont dans `data/questions/` : **6 catégories, 27 sous-catégories, 99 questions, 120 sous-questions et 42 personnes**. Les anciens CSV restent archivés dans `data/questions/legacy/`. L’import valide les identifiants, parents, personnes et liens de contraire :
 
 ```sh
 python3 scripts/import_questions.py
 ```
 
-Les champs supplémentaires (`poids`, `heures_pic`, `jours`, `contraire_id`, `personne_id`, etc.) sont conservés dans les métadonnées de chaque élément. Ils n’ajoutent pas de tri ou de filtre temporel automatique. Le lieu choisi dans Réglages filtre les indicateurs `centre` / `domicile` ; par défaut, tous les lieux sont affichés.
+Les jours autorisés filtrent les questions et les personnes, selon la date de Paris. Le week-end, `ordre_weekend` est prioritaire lorsqu’il est renseigné. Le lieu choisi dans Réglages filtre `centre` / `domicile`. Les personnes liées sont également filtrées selon les actions autorisées (contacter, voir, parler), le genre et le statut de référent de la branche.
+
+Le Top 3 applique le poids de la question et celui de la personne liée. Les créneaux `heures_pic` multiplient le score par 1,5 ; une question `epingler_pic` est prioritaire pendant son créneau. Le début d’un créneau est inclus et sa fin exclue. Deux questions liées par `contraire_id` ne sont pas proposées ensemble dans le Top 3.
 
 Le bouton **Caméra** demande l’autorisation du navigateur, puis utilise MediaPipe localement, comme la maquette : tête vers sa gauche = oui, vers sa droite = non, pencher une seconde = parler. La caméra arrière est privilégiée pour qu’un accompagnant tienne le téléphone face à Anna. Les images restent dans le navigateur. La reconnaissance doit être calibrée avec Anna ; les boutons et le clavier restent disponibles.
 
 ## Administration et données
 
-L’admin propose **Résumé**, **Questions** et **Réglages**, et s’ouvre directement sur la banque. Résumé affiche l’historique partagé et les réponses détaillées, avec filtre par thème et actualisation. L’onglet Questions montre les cinq niveaux de la hiérarchie, avec recherche, ajout, modification et suppression. On peut modifier le texte, le libellé, le parent, les ordres, les phrases Oui/Non, la branche et les lieux autorisés. Supprimer un élément supprime aussi ses descendants après confirmation. La question de départ est modifiable mais ne peut pas être supprimée. Pendant une sauvegarde, le bouton affiche « Enregistrement en cours… » et empêche les doubles envois.
+L’admin propose **Résumé**, **Questions**, **Personnes** et **Réglages**, et s’ouvre directement sur la banque. Résumé affiche l’historique partagé et les réponses détaillées, avec filtre par thème et actualisation. L’onglet Questions montre les cinq niveaux de la hiérarchie, avec recherche, ajout, modification et suppression. On peut modifier le texte, le libellé, le parent, les ordres, les phrases Oui/Non, la branche et les lieux autorisés. Supprimer un élément supprime aussi ses descendants après confirmation. La question de départ est modifiable mais ne peut pas être supprimée. Les questions et sous-questions exposent aussi les poids, jours, ordres du week-end, contraires et personnes liées ; les questions proposent les créneaux et l’épinglage. L’onglet Personnes permet de modifier les noms, groupes, actions autorisées, jours, poids et référents. Renommer une personne actualise ses textes liés. Pour une nouvelle personne, ajouter explicitement ses questions dans Questions. Pendant une sauvegarde, le bouton affiche « Enregistrement en cours… » et empêche les doubles envois.
 
 Les questions, les personnes et les réglages sont conservés dans un **stockage privé Vercel Blob**, commun à tous les utilisateurs et durable entre déploiements. L’admin n’annonce un enregistrement qu’après sa sauvegarde sur le serveur. Les pages publiques ouvertes vérifient les mises à jour toutes les 15 secondes et à leur retour au premier plan. Si la banque change pendant le parcours, celui-ci reprend au départ avec un message.
 
@@ -42,7 +44,7 @@ Au premier chargement de l’admin, si le stockage partagé est vide, la banque 
 
 À partir de cette version, les réponses Oui/Non, les temps de réponse et les résultats des échanges (y compris demandes de parole et messages épelés) sont enregistrés dans **`anna/activity.json`**, séparément de la configuration **`anna/config.json`**. Il n’y a aucun identifiant permanent de personne ou d’appareil. Les identifiants aléatoires des échanges et envois permettent les corrections et la déduplication. Les réponses en attente restent sur l’appareil jusqu’à confirmation du serveur et sont renvoyées après reconnexion. La fenêtre de déduplication conserve les 5 000 derniers identifiants. Les échanges supprimés par l’ancienne version ne sont pas reconstitués.
 
-L’historique conserve les **300 derniers échanges** et les **2 000 dernières réponses détaillées**. Les statistiques par question sont cumulatives : nombre de réponses, Oui/Non, temps cumulé et heures habituelles des Oui (heure de Paris). Le Top 3 s’appuie sur le taux de Oui (50 %), l’usage relatif (30 %) et la rapidité (20 %), avec un bonus pour l’heure habituelle. Après la question de départ, il propose un besoin par thème prioritaire selon les ordres et branches de la banque. Le parcours complet conserve toujours les ordres explicites. Les statistiques d’ouverture ne biaisent pas le score d’usage des questions.
+L’historique conserve les **300 derniers échanges** et les **2 000 dernières réponses détaillées**. Les statistiques par question sont cumulatives : nombre de réponses, Oui/Non, temps cumulé et heures habituelles des Oui (heure de Paris). Le Top 3 s’appuie sur le taux de Oui (50 %), l’usage relatif (30 %) et la rapidité (20 %), avec un bonus pour l’heure habituelle. Après les questions épinglées actives, il propose un besoin par thème prioritaire selon les ordres et branches de la banque. Le parcours complet conserve toujours les ordres explicites. Les statistiques d’ouverture ne biaisent pas le score d’usage des questions.
 
 Le serveur Python conserve FastAPI et les mêmes identifiants. `GET /api/config` fournit la banque ; `PUT /api/config`, `/admin`, `/api/admin-session` et **`GET /api/history`** sont protégés par HTTP Basic. `POST /api/interactions` reçoit les événements validés et `GET /api/usage` ne fournit que les statistiques agrégées pour le Top 3. Aucun texte d’échange ni réponse individuelle n’est accessible via cet endpoint public. La configuration refuse toujours les champs d’interactions.
 
@@ -76,3 +78,12 @@ Aucune dépendance npm n’est nécessaire. Le backend reste FastAPI, avec dépe
 ## Publication
 
 Le dépôt est relié à Vercel : chaque push sur `main` déclenche un déploiement de production. Le preset **FastAPI** et le point d’entrée `app.py` sont déclarés à la racine. Le magasin Blob doit être relié au projet et à l’environnement de production ; `.env.local` et `.vercel/` sont ignorés par Git.
+
+Pour remplacer une banque existante par les nouveaux CSV, déployer d’abord le code compatible, puis valider et appliquer la migration :
+
+```sh
+.venv/bin/python scripts/migrate_question_bank.py --env-file .env.local
+.venv/bin/python scripts/migrate_question_bank.py --env-file .env.local --apply
+```
+
+La migration archive la configuration précédente dans le stockage privé avant de remplacer la banque et les personnes par les CSV. Elle conserve la question de départ, les réglages, l’historique et les statistiques. Une version CSV déjà importée n’est pas réappliquée, afin de préserver les modifications ultérieures de l’admin.

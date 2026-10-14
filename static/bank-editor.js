@@ -3,7 +3,7 @@ import { entries, findEntry, LEVELS, LEVEL_NAMES, orderedNodes } from './hierarc
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const levelName = node => LEVEL_NAMES[LEVELS.indexOf(node.level)];
 
-export function createBankEditor({ getBank, mutate, rerender }) {
+export function createBankEditor({ getBank, getPeople = () => [], mutate, rerender }) {
   let editing = null, addingTo = null, search = '', armed = null, saving = false;
   const show = () => rerender();
   const matches = node => !search || `${node.q} ${node.label} ${node.sourceId || ''}`.toLocaleLowerCase('fr').includes(search.toLocaleLowerCase('fr')) || node.children.some(matches);
@@ -11,7 +11,8 @@ export function createBankEditor({ getBank, mutate, rerender }) {
   function tree(node) {
     if (!matches(node)) return '';
     const badge = node.order == null ? 'Ordre libre' : `Ordre ${node.order}`;
-    const row = `<div class="bank-row"><div><span class="bank-level">${esc(levelName(node))} · ${badge}</span><p>${esc(node.q)}</p></div><div class="bank-actions">
+    const info = [node.weight != null ? `Poids ${node.weight}` : '', node.days ? `Jours : ${node.days}` : '', node.weekendOrder != null ? `Ordre week-end ${node.weekendOrder}` : '', node.peakHours ? `Créneaux : ${node.peakHours}` : '', node.pinned ? 'Épinglé au Top 3 pendant les créneaux' : '', node.personId ? `Personne : ${getPeople().find(p => p.id === node.personId)?.name || node.personId}` : ''].filter(Boolean).join(' · ');
+    const row = `<div class="bank-row"><div><span class="bank-level">${esc(levelName(node))} · ${badge}</span><p>${esc(node.q)}</p>${info ? `<small class="muted">${esc(info)}</small>` : ''}</div><div class="bank-actions">
       <button class="btn sm" data-bank-edit="${esc(node.id)}">Modifier<span class="sr-only"> : ${esc(node.q)}</span></button>
       ${node.level !== 'subquestion' ? `<button class="btn sm" data-bank-add="${esc(node.id)}">+ ${LEVEL_NAMES[LEVELS.indexOf(node.level) + 1]}</button>` : ''}
       ${node.level !== 'master' ? `<button class="btn sm danger" data-bank-delete="${esc(node.id)}">${armed === node.id ? 'Confirmer' : 'Supprimer'}<span class="sr-only"> : ${esc(node.q)}</span></button>` : ''}
@@ -36,6 +37,11 @@ export function createBankEditor({ getBank, mutate, rerender }) {
       ${index ? `<label class="fl wide">Parent<select name="parentId">${parents.map(e => `<option value="${esc(e.node.id)}" ${parent?.id === e.node.id ? 'selected' : ''}>${esc([...e.path.filter(p => p.level !== 'master'), e.node].map(p => p.label).join(' › '))}</option>`).join('')}</select></label>` : ''}
       ${node.level === 'category' ? input('Ordre après Oui à « Ça va ? »', 'orderYes', 'number') + input('Ordre après Non à « Ça va ? »', 'orderNo', 'number') : ''}
       ${node.level === 'subcategory' ? `<label class="fl">Après la question de départ<select name="branch">${[['les_deux', 'Après Oui ou Non'], ['oui', 'Après Oui'], ['non', 'Après Non']].map(([v, label]) => `<option value="${v}" ${node.branch === v ? 'selected' : ''}>${label}</option>`).join('')}</select></label>` : ''}
+      ${index >= 3 ? `<label class="fl">Poids<input name="weight" type="number" min="0" step="any" value="${node.weight ?? 1}"></label>
+        ${input('Jours (vide = tous, sinon weekend, semaine, lundi…)', 'days')}${input('Ordre le week-end (facultatif)', 'weekendOrder', 'number')}
+        <label class="fl">Question contraire<select name="oppositeId"><option value="">Aucune</option>${entries(bank).filter(e => e.node.level === node.level && e.node.id !== node.id).map(e => `<option value="${esc(e.node.id)}" ${e.node.id === node.oppositeId ? 'selected' : ''}>${esc(e.node.q)}</option>`).join('')}</select></label>
+        <label class="fl">Personne liée<select name="personId"><option value="">Aucune</option>${getPeople().map(p => `<option value="${esc(p.id)}" ${p.id === node.personId ? 'selected' : ''}>${esc(p.name)}${p.role ? ` · ${esc(p.role)}` : ''}</option>`).join('')}</select></label>
+        ${node.level === 'question' ? `${input('Créneaux horaires (ex. 8-10;12-13)', 'peakHours')}<label class="ck"><input name="pinned" type="checkbox" ${node.pinned ? 'checked' : ''}> Épingler au Top 3 pendant ces créneaux</label>` : ''}` : ''}
       ${index ? `<label class="fl wide">Phrase si Oui<textarea name="yesText" maxlength="600">${esc(node.yesText || '')}</textarea></label><label class="fl wide">Phrase si Non (facultative)<textarea name="noText" maxlength="600">${esc(node.noText || '')}</textarea></label>
       <label class="ck"><input name="centre" type="checkbox" ${node.centre !== false ? 'checked' : ''}> Au centre</label><label class="ck"><input name="domicile" type="checkbox" ${node.domicile !== false ? 'checked' : ''}> Au domicile</label>` : ''}
       <div class="row wide"><button class="btn primary" type="submit">Enregistrer</button><button class="btn" type="button" id="bank-cancel">Annuler</button><span id="bank-error" class="err" role="alert"></span></div>
@@ -77,6 +83,7 @@ export function createBankEditor({ getBank, mutate, rerender }) {
         if (saving) return;
         const data = Object.fromEntries(new FormData(e.currentTarget));
         for (const key of ['centre', 'domicile']) data[key] = e.currentTarget.elements[key]?.checked ?? true;
+        if (e.currentTarget.elements.pinned) data.pinned = e.currentTarget.elements.pinned.checked;
         showSaving(root, true);
         let result;
         try {

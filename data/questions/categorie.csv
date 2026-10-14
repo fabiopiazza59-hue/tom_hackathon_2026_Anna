@@ -1,0 +1,7 @@
+id,ordre,ordre_si_non,ordre_si_oui,question,phrase_oui,phrase_non,centre,domicile
+corps,1,1,2,C'est à propos de ton corps ?,J'ai besoin de quelque chose pour mon corps.,,TRUE,TRUE
+ressenti,2,2,1,Tu veux dire ce que tu ressens ?,Je voudrais dire ce que je ressens.,,TRUE,TRUE
+autres,3,3,3,C'est à propos de quelqu'un ?,"C'est à propos de quelqu'un, mais je n'arrive pas à dire qui.",,TRUE,TRUE
+activites,4,4,4,Tu aimerais faire quelque chose ?,"J'aimerais faire quelque chose, mais je ne sais pas dire quoi.",,TRUE,TRUE
+dire,5,5,5,Tu veux me dire quelque chose ?,Je voudrais te dire quelque chose.,,TRUE,TRUE
+accord,6,6,6,Tu veux dire si tu es d'accord ?,Je voudrais dire si je suis d'accord.,,TRUE,TRUE

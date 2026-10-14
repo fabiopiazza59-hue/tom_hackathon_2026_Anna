@@ -2,6 +2,7 @@ import { createHeadTracker } from './head-tracking.js';
 import { createSharedApi } from './shared-data.js';
 import { startHierarchy, startAtHierarchy, answerHierarchy, availableChildren, orderedNodes, findEntry, LEVEL_NAMES, LEVELS } from './hierarchy.js';
 import { createBankEditor } from './bank-editor.js';
+import { createPeopleEditor } from './people-editor.js';
 import { createActivity } from './activity.js';
 import { themeOrder, topQuestions } from './recommendations.js';
 
@@ -577,8 +578,8 @@ async function adm(action, payload, okMsg) {
 
 function renderAdmin() {
   return `<div class="adm"><p class="muted local-notice">Questions partagées avec tous les utilisateurs.</p>
-    <div class="seg" role="tablist">${[['resume', 'Résumé'], ['questions', 'Questions'], ['reglages', 'Réglages']].map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" data-tab="${k}" class="${tab === k ? 'cur' : ''}">${l}</button>`).join('')}</div>
-    ${tab === 'resume' ? admResume() : tab === 'questions' ? admQuestions() : admSettings()}
+    <div class="seg" role="tablist">${[['resume', 'Résumé'], ['questions', 'Questions'], ['personnes', 'Personnes'], ['reglages', 'Réglages']].map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" data-tab="${k}" class="${tab === k ? 'cur' : ''}">${l}</button>`).join('')}</div>
+    ${tab === 'resume' ? admResume() : tab === 'questions' ? admQuestions() : tab === 'personnes' ? peopleEditor.render() : admSettings()}
   </div>`;
 }
 function admResume() {
@@ -604,19 +605,11 @@ function admResume() {
       }).join('') || '<li class="muted">Aucun échange pour l’instant.</li>'}</ul>
       <p class="muted" style="font-size:13px">Historique partagé, réservé à l’admin. Les 300 derniers échanges sont conservés.</p></div>`;
 }
-const bankEditor = createBankEditor({ getBank: () => S.bank, mutate: adm, rerender: render });
+const bankEditor = createBankEditor({ getBank: () => S.bank, getPeople: () => S.people, mutate: adm, rerender: render });
+const peopleEditor = createPeopleEditor({ getBank: () => S.bank, getPeople: () => S.people, mutate: adm, rerender: render });
 function admQuestions() { return bankEditor.render(); }
 function admSettings() {
-  return `<div class="card"><h3>Personnes</h3>
-      <ul class="rows">${S.people.map(p => `<li>${avatar(p)}<div class="t"><b>${esc(p.name)}</b><small>${esc(p.role)} · ${esc(p.kind)}</small></div><button class="btn sm danger" data-pdel="${esc(p.id)}">${armed === p.id ? 'Confirmer' : 'Retirer'}</button></li>`).join('') || '<li class="muted">Aucune personne pour l’instant.</li>'}</ul>
-      <details ${S.people.length ? '' : 'open'}><summary>+ Ajouter une personne</summary>
-        <form class="fgrid c2" id="fP">
-          <label class="fl">Prénom<input type="text" id="pName" required maxlength="60"></label>
-          <label class="fl">Lien avec ${esc(name())}<input type="text" id="pRole" placeholder="ex. cousine, bénévole" maxlength="80"></label>
-          <label class="fl">Catégorie<select id="pKind">${KINDS.map(k => `<option>${k}</option>`).join('')}</select></label>
-          <button class="btn primary">Ajouter</button>
-        </form></details></div>
-    <div class="card"><h3>Programme du jour</h3>
+  return `    <div class="card"><h3>Programme du jour</h3>
       <textarea id="plan" aria-label="Programme du jour" maxlength="4000">${esc(S.plan)}</textarea>
       <div style="margin-top:8px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span class="muted" style="font-size:13px">Une ligne par moment : HH:MM activité</span><button class="btn primary" id="savePlan">Enregistrer</button></div></div>
     <div class="card"><h3>Options</h3>
@@ -631,6 +624,7 @@ function admSettings() {
 function bindAdmin() {
   const m = $('#main'), on = (sel, ev, fn) => m.querySelectorAll(sel).forEach(el => el.addEventListener(ev, fn));
   if (tab === 'questions') bankEditor.bind(m);
+  if (tab === 'personnes') peopleEditor.bind(m);
   const confirmOr = (id, fn) => { if (armed !== id) { armed = id; return render(); } fn(); };
   on('[data-tab]', 'click', async e => { tab = e.currentTarget.dataset.tab; armed = ''; render(); if (tab === 'resume') { await loadActivity(); if (tab === 'resume') render(); } });
   on('#histF', 'change', e => { histF = e.target.value; render(); });

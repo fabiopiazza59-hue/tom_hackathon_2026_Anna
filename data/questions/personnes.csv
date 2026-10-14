@@ -1,0 +1,43 @@
+id,prenom_dit,genre,role,groupe_proche,groupe_soins,groupe_centre,precision,contacter,voir,parler,jours,poids,referent
+maman,maman,F,,TRUE,FALSE,FALSE,,TRUE,TRUE,TRUE,,6,FALSE
+papa,papa,H,,TRUE,FALSE,FALSE,,TRUE,TRUE,TRUE,,1,FALSE
+benjamin,Benjamin,H,mon frère,TRUE,FALSE,FALSE,,TRUE,FALSE,TRUE,,1,FALSE
+amandine,Amandine,F,,TRUE,FALSE,FALSE,,TRUE,FALSE,TRUE,,1,FALSE
+flora,Flora,F,,TRUE,FALSE,FALSE,,TRUE,FALSE,TRUE,,1,FALSE
+ethan,Ethan,H,mon neveu,TRUE,FALSE,FALSE,,TRUE,FALSE,TRUE,,1,FALSE
+roxane,Roxane,F,la coiffeuse,FALSE,TRUE,FALSE,,TRUE,FALSE,FALSE,weekend,1.2,FALSE
+jean_marc,Jean-Marc,H,l'ostéo,FALSE,TRUE,FALSE,,TRUE,FALSE,FALSE,weekend,1.2,FALSE
+patricia,Patricia,F,la magnétiseuse,FALSE,TRUE,FALSE,,TRUE,FALSE,FALSE,weekend,1.2,FALSE
+marie_sono,"Marie, de la sonothérapie",F,des soins de sonothérapie,FALSE,TRUE,FALSE,,TRUE,FALSE,FALSE,weekend,1.2,FALSE
+anne,Anne,F,des soins à domicile,FALSE,TRUE,FALSE,,TRUE,FALSE,FALSE,,0.6,FALSE
+marie_domicile,"Marie, des soins à domicile",F,des soins à domicile,FALSE,TRUE,FALSE,,TRUE,FALSE,FALSE,,0.6,FALSE
+christine,Christine,F,des soins à domicile,FALSE,TRUE,FALSE,,TRUE,FALSE,FALSE,,0.6,FALSE
+johanna,Johanna,F,des soins à domicile,FALSE,TRUE,FALSE,,TRUE,FALSE,FALSE,,0.6,FALSE
+murielle,Murielle,F,des soins à domicile,FALSE,TRUE,FALSE,,TRUE,FALSE,FALSE,,0.6,FALSE
+elodie,Élodie,F,des soins à domicile,FALSE,TRUE,FALSE,,TRUE,FALSE,FALSE,,0.6,FALSE
+michaud,Monsieur Michaud,H,le directeur,FALSE,FALSE,TRUE,équipe,TRUE,TRUE,TRUE,,0.8,FALSE
+clemenceau,Monsieur Clemenceau,H,le chef de service éducatif,FALSE,FALSE,TRUE,équipe,TRUE,TRUE,TRUE,,0.8,FALSE
+chaouch,Madame Chaouch,F,la cadre de santé,FALSE,FALSE,TRUE,équipe,TRUE,TRUE,TRUE,,0.8,FALSE
+alexane,Alexane,F,l'ergothérapeute,FALSE,FALSE,TRUE,équipe,TRUE,TRUE,TRUE,,0.8,TRUE
+sirine,Sirine,F,la coordinatrice de parcours,FALSE,FALSE,TRUE,équipe,TRUE,TRUE,TRUE,,0.8,TRUE
+laureen,Laureen,F,la psychomotricienne,FALSE,FALSE,TRUE,équipe,TRUE,TRUE,TRUE,,0.8,TRUE
+ondine,Ondine,F,la psychologue,FALSE,FALSE,TRUE,équipe,TRUE,TRUE,TRUE,,0.8,TRUE
+melissa,Mélissa,F,l'ostéopathe,FALSE,FALSE,TRUE,équipe,TRUE,TRUE,TRUE,,0.8,TRUE
+thierry,Thierry,H,le kiné,FALSE,FALSE,TRUE,équipe,TRUE,TRUE,TRUE,,0.8,TRUE
+marine,Marine,F,l'infirmière,FALSE,FALSE,TRUE,équipe,TRUE,TRUE,TRUE,,0.8,TRUE
+jeannette,Jeannette,F,l'infirmière,FALSE,FALSE,TRUE,équipe,TRUE,TRUE,TRUE,,0.8,TRUE
+liliane,Liliane,F,la monitrice éducatrice,FALSE,FALSE,TRUE,équipe,TRUE,TRUE,TRUE,,0.8,TRUE
+fatima,Fatima,F,des soins quotidiens,FALSE,FALSE,TRUE,équipe,TRUE,TRUE,TRUE,,0.8,TRUE
+vincent,Vincent,H,l'éducateur sportif,FALSE,FALSE,TRUE,équipe,TRUE,TRUE,TRUE,,0.8,TRUE
+francoise,Françoise,F,,FALSE,FALSE,TRUE,résident,FALSE,TRUE,TRUE,,0.8,FALSE
+eric,Éric,H,,FALSE,FALSE,TRUE,résident,FALSE,TRUE,TRUE,,0.8,FALSE
+koudiedji,Koudiedji,F,,FALSE,FALSE,TRUE,résident,FALSE,TRUE,TRUE,,0.8,FALSE
+ahmidou,Ahmidou,H,,FALSE,FALSE,TRUE,résident,FALSE,TRUE,TRUE,,0.8,FALSE
+christine_ni,Christine Ni,F,,FALSE,FALSE,TRUE,résident,FALSE,TRUE,TRUE,,0.8,FALSE
+christine_lu,Christine Lu,F,,FALSE,FALSE,TRUE,résident,FALSE,TRUE,TRUE,,0.8,FALSE
+ivannh,Ivannh,H,,FALSE,FALSE,TRUE,résident,FALSE,TRUE,TRUE,,0.8,FALSE
+sohir,Sohir,F,,FALSE,FALSE,TRUE,accueil de jour,FALSE,TRUE,TRUE,,0.8,FALSE
+fabien,Fabien,H,,FALSE,FALSE,TRUE,accueil de jour,FALSE,TRUE,TRUE,,0.8,FALSE
+veronique,Véronique,F,,FALSE,FALSE,TRUE,repas,FALSE,TRUE,TRUE,,0.8,FALSE
+koumba,Koumba,F,,FALSE,FALSE,TRUE,repas,FALSE,TRUE,TRUE,,0.8,FALSE
+maimouna,Maimouna,F,la technicienne de surface,FALSE,FALSE,TRUE,équipe,FALSE,TRUE,TRUE,,0.8,FALSE
