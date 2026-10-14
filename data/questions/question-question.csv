@@ -1,0 +1,92 @@
+id;sous_categorie_id;ordre;question;phrase_oui;phrase_non;poids;heures_pic;epingler_pic;jours;contraire_id;centre;domicile
+mal_dos;douleur;1;Tu as mal au dos ?;J'ai mal au dos.;;6;;FAUX;;;VRAI;VRAI
+mal_ventre;douleur;2;Tu as mal au ventre ?;J'ai mal au ventre.;;2;;FAUX;;;VRAI;VRAI
+mal_tete;douleur;3;Tu as mal à la tête ?;J'ai mal à la tête.;;2;;FAUX;;;VRAI;VRAI
+mal_bras;douleur;4;Tu as mal aux bras ?;J'ai mal aux bras.;;1;;FAUX;;;VRAI;VRAI
+mal_jambes;douleur;5;Tu as mal aux jambes ?;J'ai mal aux jambes.;;1;;FAUX;;;VRAI;VRAI
+mal_bouche;douleur;6;Tu as mal à la bouche ?;J'ai mal à la bouche.;;1;;FAUX;;;VRAI;VRAI
+mal_dents;douleur;7;Tu as mal aux dents ?;J'ai mal aux dents.;;1;;FAUX;;;VRAI;VRAI
+allongee;installation;1;Tu veux être allongée ?;Je voudrais être allongée.;;3;;FAUX;;;VRAI;VRAI
+assise_fauteuil;installation;2;Tu veux être assise dans ton fauteuil ?;Je voudrais être assise dans mon fauteuil.;;3;;FAUX;;;VRAI;VRAI
+remonter_fauteuil;installation;3;Tu veux être remontée dans ton fauteuil ?;Je voudrais être remontée dans mon fauteuil.;;2;;FAUX;;;VRAI;VRAI
+sangles;installation;4;Les sangles te gênent ?;Les sangles de mon fauteuil me gênent.;;1;;FAUX;;;VRAI;VRAI
+freins;installation;5;Tu veux qu'on mette les freins ?;Je voudrais qu'on mette les freins de mon fauteuil.;;1;;FAUX;;;VRAI;VRAI
+change;gene;1;Tu veux être changée ?;Je voudrais être changée.;;6;;FAUX;;;VRAI;VRAI
+vetements;gene;2;Un vêtement te gêne ?;Un vêtement me gêne.;;1;;FAUX;;;VRAI;VRAI
+trop_chaud;gene;3;Tu as trop chaud ?;J'ai trop chaud.;;2;;FAUX;;trop_froid;VRAI;VRAI
+trop_froid;gene;4;Tu as froid ?;J'ai froid.;;2;;FAUX;;trop_chaud;VRAI;VRAI
+gratte;gene;5;Ça te gratte ?;Ça me gratte.;;1;;FAUX;;;VRAI;VRAI
+trop_bruit;gene;6;Il y a trop de bruit ?;Il y a trop de bruit.;;1;;FAUX;;;VRAI;VRAI
+repas;manger;1;Tu as faim ?;J'ai faim.;;3;"11-13;18-20";VRAI;;;VRAI;VRAI
+chocolat;manger;2;Tu aimerais quelque chose au chocolat ?;J'aimerais quelque chose au chocolat.;;0,5;15-17;FAUX;;;VRAI;VRAI
+eau;boire;1;Tu as soif ?;J'ai soif.;;3;"10-13;15-16;18-20";VRAI;;;VRAI;VRAI
+ice_tea;boire;2;Tu aimerais un ice tea ?;J'aimerais un ice tea.;;0,5;15-17;FAUX;;;VRAI;VRAI
+dormir;repos;1;Tu veux te reposer ?;Je voudrais me reposer.;;3;20-22;FAUX;;;VRAI;VRAI
+coucher_tard;repos;2;Tu veux te coucher plus tard ?;J'aimerais me coucher plus tard.;;1;20-22;FAUX;;;VRAI;VRAI
+continuer;bien;1;Tu veux continuer ce que tu fais ?;Je suis bien, je veux continuer.;;3;;FAUX;;;VRAI;VRAI
+bon_moment;bien;2;Tu passes un bon moment ?;Je passe un bon moment.;;3;;FAUX;;;VRAI;VRAI
+plait;bien;3;Ça te plaît ?;Ça me plaît.;;2;;FAUX;;;VRAI;VRAI
+en_colere;difficile;1;Tu es en colère ?;Je suis en colère.;;4;;FAUX;;;VRAI;VRAI
+blessee;difficile;2;Quelqu'un t'a fait de la peine ?;Quelqu'un m'a fait de la peine.;;3;;FAUX;;;VRAI;VRAI
+triste;difficile;3;Tu as de la peine ?;J'ai de la peine.;;3;;FAUX;;;VRAI;VRAI
+frustree;difficile;4;Tu es frustrée ?;Je suis frustrée.;;3;;FAUX;;;VRAI;VRAI
+decue;difficile;5;Tu es déçue ?;Je suis déçue.;;2;;FAUX;;;VRAI;VRAI
+peur;difficile;6;Tu as peur ?;J'ai peur.;;2;;FAUX;;;VRAI;VRAI
+parle_devant;difficile;7;Ça te gêne qu'on parle de toi devant toi ?;Je n'aime pas qu'on parle de moi devant moi.;;2;;FAUX;;;VRAI;VRAI
+rester_maison;difficile;8;Tu aimerais rester à la maison ?;J'aimerais rester à la maison.;;2;;FAUX;weekend;;FAUX;VRAI
+parle_plus;ennui;1;Tu voudrais qu'on te parle plus ?;J'aimerais qu'on me parle plus.;;3;;FAUX;;;VRAI;VRAI
+stimulee_plus;ennui;2;Tu voudrais être plus stimulée ?;J'aimerais être plus stimulée.;;3;;FAUX;;;VRAI;VRAI
+arreter_activite;probleme;1;Tu veux arrêter l'activité ?;Je voudrais arrêter l'activité.;;1;;FAUX;;;VRAI;VRAI
+partir;probleme;2;Tu veux partir d'ici ?;Je voudrais partir d'ici.;;1;;FAUX;;;VRAI;VRAI
+personne_parte;probleme;3;Tu veux que la personne parte ?;Je voudrais que la personne parte.;;1;;FAUX;;;VRAI;VRAI
+contacter_maman;contacter;1;Tu veux contacter maman ?;Je voudrais contacter maman.;;6;;FAUX;;;VRAI;VRAI
+contacter_homme;contacter;2;C'est un homme ?;Je voudrais contacter un homme, mais je n'arrive pas à dire qui.;;1;;FAUX;;;VRAI;VRAI
+contacter_femme;contacter;3;C'est une femme ?;Je voudrais contacter une femme, mais je n'arrive pas à dire qui.;;1;;FAUX;;;VRAI;VRAI
+voir_homme;voir;1;C'est un homme ?;Je voudrais voir un homme, mais je n'arrive pas à dire qui.;;1;;FAUX;;;VRAI;VRAI
+voir_femme;voir;2;C'est une femme ?;Je voudrais voir une femme, mais je n'arrive pas à dire qui.;;1;;FAUX;;;VRAI;VRAI
+avec_moi;parler;1;Avec moi ?;Je voudrais parler avec toi.;;1;;FAUX;;;VRAI;VRAI
+parler_educatrice;parler;2;Avec ton éducatrice ?;Je voudrais parler avec mon éducatrice.;;2;;FAUX;;;VRAI;VRAI
+parler_responsable;parler;3;Avec la responsable ?;Je voudrais parler avec la responsable.;;2;;FAUX;;;VRAI;VRAI
+parler_homme;parler;4;C'est un homme ?;Je voudrais parler à un homme, mais je n'arrive pas à dire qui.;;1;;FAUX;;;VRAI;VRAI
+parler_femme;parler;5;C'est une femme ?;Je voudrais parler à une femme, mais je n'arrive pas à dire qui.;;1;;FAUX;;;VRAI;VRAI
+reste_avec_moi;compagnie;1;Tu veux que quelqu'un reste avec toi ?;Je voudrais que quelqu'un reste avec moi.;;5;;FAUX;;;VRAI;VRAI
+calin;compagnie;2;Tu veux un câlin ?;Je voudrais un câlin.;;2;;FAUX;;;VRAI;VRAI
+copains;compagnie;3;Tu veux être avec les copains ?;Je voudrais être avec les copains.;;2;;FAUX;;;VRAI;FAUX
+chambre;seule;1;Tu veux aller dans ta chambre ?;Je voudrais aller dans ma chambre.;;2;;FAUX;;;VRAI;VRAI
+musique;ecouter_regarder;1;De la musique ?;J'aimerais écouter de la musique.;;2;;FAUX;;;VRAI;VRAI
+tele;ecouter_regarder;2;La télé ?;J'aimerais regarder la télé.;;1;;FAUX;;;VRAI;VRAI
+video;ecouter_regarder;3;Une vidéo ?;J'aimerais regarder une vidéo.;;1;;FAUX;;;VRAI;VRAI
+lapin;animaux;1;Le lapin ?;J'aimerais voir le lapin.;;1;;FAUX;;;VRAI;FAUX
+tourterelle;animaux;2;La tourterelle ?;J'aimerais voir la tourterelle.;;1;;FAUX;;;VRAI;FAUX
+cochon_inde;animaux;3;Le cochon d'Inde ?;J'aimerais voir le cochon d'Inde.;;1;;FAUX;;;VRAI;FAUX
+chinchilla;animaux;4;Le chinchilla ?;J'aimerais voir le chinchilla.;;1;;FAUX;;;VRAI;FAUX
+balneo;detente;1;Aller à la balnéothérapie ?;J'aimerais aller à la balnéo.;;3;;FAUX;;;VRAI;FAUX
+massage_mains;detente;2;Un massage des mains ?;J'aimerais un massage des mains.;;1;;FAUX;;;VRAI;VRAI
+massage_pieds;detente;3;Un massage des pieds ?;J'aimerais un massage des pieds.;;1;;FAUX;;;VRAI;VRAI
+relaxation;detente;4;De la relaxation ?;J'aimerais faire de la relaxation.;;1;;FAUX;;;VRAI;VRAI
+tapis;detente;5;Aller sur le tapis ?;J'aimerais aller sur le tapis.;;1;;FAUX;;;VRAI;FAUX
+sport;ateliers;1;Du sport ?;J'aimerais faire du sport.;;1;;FAUX;;;VRAI;FAUX
+creatif;ateliers;2;Un atelier créatif ?;J'aimerais faire un atelier créatif.;;1;;FAUX;;;VRAI;FAUX
+nouvelle_activite;ateliers;3;Une nouvelle activité ?;J'aimerais essayer une nouvelle activité.;;1;;FAUX;;;VRAI;FAUX
+sortir;balade;1;Dehors ?;J'aimerais sortir dehors.;;2;;FAUX;;;VRAI;VRAI
+ascenseur;balade;2;Prendre l'ascenseur ?;J'aimerais prendre l'ascenseur.;;1;;FAUX;;;VRAI;FAUX
+marche;sorties;1;Au marché ?;J'aimerais aller au marché.;;1;;FAUX;;;VRAI;VRAI
+pique_nique;sorties;2;Un pique-nique ?;J'aimerais faire un pique-nique.;;1;;FAUX;;;VRAI;VRAI
+cinema;sorties;3;Au cinéma ?;J'aimerais aller au cinéma.;;1;;FAUX;;;VRAI;VRAI
+theatre;sorties;4;Au théâtre ?;J'aimerais aller au théâtre.;;1;;FAUX;;;VRAI;VRAI
+concert;sorties;5;À un concert ?;J'aimerais aller à un concert.;;1;;FAUX;;;VRAI;VRAI
+musee;sorties;6;Au musée ?;J'aimerais aller au musée.;;1;;FAUX;;;VRAI;VRAI
+fete_etablissement;evenements;1;À la fête de l'établissement ?;J'aimerais participer à la fête de l'établissement.;;1;;FAUX;;;VRAI;FAUX
+cvs;evenements;2;Au conseil de la vie sociale ?;J'aimerais participer au conseil de la vie sociale.;;1;;FAUX;;;VRAI;FAUX
+forum;evenements;3;Au forum ?;J'aimerais participer au forum.;;1;;FAUX;;;VRAI;VRAI
+voter;evenements;4;Aller voter ?;J'aimerais aller voter.;;1;;FAUX;;;VRAI;VRAI
+vacances_colonie;vacances;1;Avec la colonie ?;J'aimerais partir en vacances avec la colonie.;;1;;FAUX;;;VRAI;VRAI
+vacances_famille;vacances;2;Avec ta famille ?;J'aimerais partir en vacances avec ma famille.;;1;;FAUX;;;VRAI;VRAI
+bien_passe;raconter;1;C'est quelque chose qui s'est bien passé ?;Je voudrais raconter quelque chose qui s'est bien passé.;;1;;FAUX;;;VRAI;VRAI
+mal_passe;raconter;2;C'est quelque chose qui s'est mal passé ?;Je voudrais raconter quelque chose qui s'est mal passé.;;1;;FAUX;;;VRAI;VRAI
+prochain_rdv;savoir;1;Quand est ton prochain rendez-vous ?;Je voudrais savoir quand est mon prochain rendez-vous.;;3;;FAUX;;;VRAI;VRAI
+retour_maison;savoir;2;Quand tu rentres à la maison ?;Je voudrais savoir quand je rentre à la maison.;;3;;FAUX;;;VRAI;FAUX
+programme_jour;savoir;3;Le programme de la journée ?;Je voudrais savoir le programme de la journée.;;2;;FAUX;;;VRAI;VRAI
+accord_entrer;mes_affaires;1;Tu m'autorises à entrer chez toi ?;Oui, tu peux entrer chez moi.;Non, je ne veux pas que tu entres chez moi.;1;;FAUX;;;VRAI;VRAI
+accord_sac;mes_affaires;2;Tu m'autorises à regarder dans ton sac ?;Oui, tu peux regarder dans mon sac.;Non, je ne veux pas que tu regardes dans mon sac.;1;;FAUX;;;VRAI;VRAI
+accord_contact;mon_corps_accord;1;Tu m'autorises à avoir un contact physique avec toi ?;Oui, tu peux avoir un contact physique avec moi.;Non, je ne veux pas que tu me touches.;1;;FAUX;;;VRAI;VRAI

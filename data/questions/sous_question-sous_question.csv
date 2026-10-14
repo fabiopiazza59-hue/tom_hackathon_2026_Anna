@@ -1,0 +1,118 @@
+id;question_id;ordre;question;phrase_oui;phrase_non;poids;jours;contraire_id;personne_id;centre;domicile
+allongee_lit;allongee;1;Dans ton lit ?;Je voudrais être allongée dans mon lit.;;2;;allongee_fauteuil;;VRAI;VRAI
+allongee_fauteuil;allongee;2;Dans ton fauteuil ?;Je voudrais être allongée dans mon fauteuil.;;1;;allongee_lit;;VRAI;VRAI
+enlever_gilet;vetements;1;Tu veux enlever ton gilet ?;Je voudrais enlever mon gilet.;;1;;mettre_gilet;;VRAI;VRAI
+mettre_gilet;vetements;2;Tu veux mettre un gilet ?;Je voudrais mettre un gilet.;;1;;enlever_gilet;;VRAI;VRAI
+enlever_chaussures;vetements;3;Tu veux enlever tes chaussures ?;Je voudrais enlever mes chaussures.;;1;;;;VRAI;VRAI
+remonter_chaussette;vetements;4;Tu veux remonter ta chaussette ?;Je voudrais remonter ma chaussette.;;1;;;;VRAI;VRAI
+paille;eau;1;Avec une paille ?;J'ai soif. Je voudrais boire avec une paille.;;1;;verre;;VRAI;VRAI
+verre;eau;2;Au verre ?;J'ai soif. Je voudrais boire au verre.;;1;;paille;;VRAI;VRAI
+contacter_papa;contacter_homme;1;Tu veux contacter papa ?;Je voudrais contacter papa.;;1;;;papa;VRAI;VRAI
+contacter_benjamin;contacter_homme;2;Tu veux contacter Benjamin ?;Je voudrais contacter Benjamin, mon frère.;;1;;;benjamin;VRAI;VRAI
+contacter_ethan;contacter_homme;3;Tu veux contacter Ethan ?;Je voudrais contacter Ethan, mon neveu.;;1;;;ethan;VRAI;VRAI
+contacter_jean_marc;contacter_homme;4;Tu veux contacter Jean-Marc ?;Je voudrais contacter Jean-Marc, l'ostéo.;;1,2;weekend;;jean_marc;VRAI;VRAI
+contacter_michaud;contacter_homme;5;Tu veux contacter Monsieur Michaud ?;Je voudrais contacter Monsieur Michaud, le directeur.;;0,8;;;michaud;VRAI;VRAI
+contacter_clemenceau;contacter_homme;6;Tu veux contacter Monsieur Clemenceau ?;Je voudrais contacter Monsieur Clemenceau, le chef de service éducatif.;;0,8;;;clemenceau;VRAI;VRAI
+contacter_thierry;contacter_homme;7;Tu veux contacter Thierry ?;Je voudrais contacter Thierry, le kiné.;;0,8;;;thierry;VRAI;VRAI
+contacter_vincent;contacter_homme;8;Tu veux contacter Vincent ?;Je voudrais contacter Vincent, l'éducateur sportif.;;0,8;;;vincent;VRAI;VRAI
+contacter_amandine;contacter_femme;1;Tu veux contacter Amandine ?;Je voudrais contacter Amandine.;;1;;;amandine;VRAI;VRAI
+contacter_flora;contacter_femme;2;Tu veux contacter Flora ?;Je voudrais contacter Flora.;;1;;;flora;VRAI;VRAI
+contacter_roxane;contacter_femme;3;Tu veux contacter Roxane ?;Je voudrais contacter Roxane, la coiffeuse.;;1,2;weekend;;roxane;VRAI;VRAI
+contacter_patricia;contacter_femme;4;Tu veux contacter Patricia ?;Je voudrais contacter Patricia, la magnétiseuse.;;1,2;weekend;;patricia;VRAI;VRAI
+contacter_marie_sono;contacter_femme;5;Tu veux contacter Marie, de la sonothérapie ?;Je voudrais contacter Marie, de la sonothérapie, des soins de sonothérapie.;;1,2;weekend;;marie_sono;VRAI;VRAI
+contacter_anne;contacter_femme;6;Tu veux contacter Anne ?;Je voudrais contacter Anne, des soins à domicile.;;0,6;;;anne;VRAI;VRAI
+contacter_marie_domicile;contacter_femme;7;Tu veux contacter Marie, des soins à domicile ?;Je voudrais contacter Marie, des soins à domicile, des soins à domicile.;;0,6;;;marie_domicile;VRAI;VRAI
+contacter_christine;contacter_femme;8;Tu veux contacter Christine ?;Je voudrais contacter Christine, des soins à domicile.;;0,6;;;christine;VRAI;VRAI
+contacter_johanna;contacter_femme;9;Tu veux contacter Johanna ?;Je voudrais contacter Johanna, des soins à domicile.;;0,6;;;johanna;VRAI;VRAI
+contacter_murielle;contacter_femme;10;Tu veux contacter Murielle ?;Je voudrais contacter Murielle, des soins à domicile.;;0,6;;;murielle;VRAI;VRAI
+contacter_elodie;contacter_femme;11;Tu veux contacter Élodie ?;Je voudrais contacter Élodie, des soins à domicile.;;0,6;;;elodie;VRAI;VRAI
+contacter_chaouch;contacter_femme;12;Tu veux contacter Madame Chaouch ?;Je voudrais contacter Madame Chaouch, la cheffe de service médical et soins quotidiens.;;0,8;;;chaouch;VRAI;VRAI
+contacter_alexiane;contacter_femme;13;Tu veux contacter Alexiane ?;Je voudrais contacter Alexiane, l'ergothérapeute.;;0,8;;;alexiane;VRAI;VRAI
+contacter_sirine;contacter_femme;14;Tu veux contacter Sirine ?;Je voudrais contacter Sirine, la coordinatrice de parcours.;;0,8;;;sirine;VRAI;VRAI
+contacter_laurine;contacter_femme;15;Tu veux contacter Laurine ?;Je voudrais contacter Laurine, la psychomotricienne.;;0,8;;;laurine;VRAI;VRAI
+contacter_ondine;contacter_femme;16;Tu veux contacter Ondine ?;Je voudrais contacter Ondine, la psychologue.;;0,8;;;ondine;VRAI;VRAI
+contacter_melissa;contacter_femme;17;Tu veux contacter Mélissa ?;Je voudrais contacter Mélissa, l'ostéopathe.;;0,8;;;melissa;VRAI;VRAI
+contacter_marine;contacter_femme;18;Tu veux contacter Marine ?;Je voudrais contacter Marine, l'infirmière.;;0,8;;;marine;VRAI;VRAI
+contacter_jeanette;contacter_femme;19;Tu veux contacter Jeanette ?;Je voudrais contacter Jeanette, l'infirmière.;;0,8;;;jeanette;VRAI;VRAI
+contacter_lyliane;contacter_femme;20;Tu veux contacter Lyliane ?;Je voudrais contacter Lyliane, l'éducatrice.;;0,8;;;lyliane;VRAI;VRAI
+contacter_fatima;contacter_femme;21;Tu veux contacter Fatima ?;Je voudrais contacter Fatima, des soins quotidiens.;;0,8;;;fatima;VRAI;VRAI
+voir_michaud;voir_homme;1;Tu veux voir Monsieur Michaud ?;Je voudrais voir Monsieur Michaud, le directeur.;;0,8;;;michaud;VRAI;FAUX
+voir_clemenceau;voir_homme;2;Tu veux voir Monsieur Clemenceau ?;Je voudrais voir Monsieur Clemenceau, le chef de service éducatif.;;0,8;;;clemenceau;VRAI;FAUX
+voir_thierry;voir_homme;3;Tu veux voir Thierry ?;Je voudrais voir Thierry, le kiné.;;0,8;;;thierry;VRAI;FAUX
+voir_vincent;voir_homme;4;Tu veux voir Vincent ?;Je voudrais voir Vincent, l'éducateur sportif.;;0,8;;;vincent;VRAI;FAUX
+voir_eric;voir_homme;5;Tu veux voir Éric ?;Je voudrais voir Éric.;;0,8;;;eric;VRAI;FAUX
+voir_fabien;voir_homme;6;Tu veux voir Fabien ?;Je voudrais voir Fabien.;;0,8;;;fabien;VRAI;FAUX
+voir_chaouch;voir_femme;1;Tu veux voir Madame Chaouch ?;Je voudrais voir Madame Chaouch, la cheffe de service médical et soins quotidiens.;;0,8;;;chaouch;VRAI;FAUX
+voir_alexiane;voir_femme;2;Tu veux voir Alexiane ?;Je voudrais voir Alexiane, l'ergothérapeute.;;0,8;;;alexiane;VRAI;FAUX
+voir_sirine;voir_femme;3;Tu veux voir Sirine ?;Je voudrais voir Sirine, la coordinatrice de parcours.;;0,8;;;sirine;VRAI;FAUX
+voir_laurine;voir_femme;4;Tu veux voir Laurine ?;Je voudrais voir Laurine, la psychomotricienne.;;0,8;;;laurine;VRAI;FAUX
+voir_ondine;voir_femme;5;Tu veux voir Ondine ?;Je voudrais voir Ondine, la psychologue.;;0,8;;;ondine;VRAI;FAUX
+voir_melissa;voir_femme;6;Tu veux voir Mélissa ?;Je voudrais voir Mélissa, l'ostéopathe.;;0,8;;;melissa;VRAI;FAUX
+voir_marine;voir_femme;7;Tu veux voir Marine ?;Je voudrais voir Marine, l'infirmière.;;0,8;;;marine;VRAI;FAUX
+voir_jeanette;voir_femme;8;Tu veux voir Jeanette ?;Je voudrais voir Jeanette, l'infirmière.;;0,8;;;jeanette;VRAI;FAUX
+voir_lyliane;voir_femme;9;Tu veux voir Lyliane ?;Je voudrais voir Lyliane, l'éducatrice.;;0,8;;;lyliane;VRAI;FAUX
+voir_fatima;voir_femme;10;Tu veux voir Fatima ?;Je voudrais voir Fatima, des soins quotidiens.;;0,8;;;fatima;VRAI;FAUX
+voir_francoise;voir_femme;11;Tu veux voir Françoise ?;Je voudrais voir Françoise.;;0,8;;;francoise;VRAI;FAUX
+voir_christine_ni;voir_femme;12;Tu veux voir Christine Ni… ?;Je voudrais voir Christine Ni….;;0,8;;;christine_ni;VRAI;FAUX
+voir_christine_lu;voir_femme;13;Tu veux voir Christine Lu… ?;Je voudrais voir Christine Lu….;;0,8;;;christine_lu;VRAI;FAUX
+voir_veronique;voir_femme;14;Tu veux voir Véronique ?;Je voudrais voir Véronique.;;0,8;;;veronique;VRAI;FAUX
+voir_fatima_repas;voir_femme;15;Tu veux voir Fatima, des repas ?;Je voudrais voir Fatima, des repas.;;0,8;;;fatima_repas;VRAI;FAUX
+voir_maimouna;voir_femme;16;Tu veux voir Maimouna ?;Je voudrais voir Maimouna.;;0,8;;;maimouna;VRAI;FAUX
+parler_maison;avec_moi;1;De la maison ?;Je voudrais te parler de la maison.;;1;;;;VRAI;VRAI
+parler_centre;avec_moi;2;Du centre ?;Je voudrais te parler du centre.;;1;;;;VRAI;VRAI
+parler_activites;avec_moi;3;Des activités ?;Je voudrais te parler des activités.;;1;;;;VRAI;VRAI
+parler_quelquun;avec_moi;4;De quelqu'un ?;Je voudrais te parler de quelqu'un.;;1;;;;VRAI;VRAI
+parler_papa;parler_homme;1;Tu veux parler à papa ?;Je voudrais parler à papa.;;1;;;papa;VRAI;VRAI
+parler_benjamin;parler_homme;2;Tu veux parler à Benjamin ?;Je voudrais parler à Benjamin, mon frère.;;1;;;benjamin;VRAI;VRAI
+parler_ethan;parler_homme;3;Tu veux parler à Ethan ?;Je voudrais parler à Ethan, mon neveu.;;1;;;ethan;VRAI;VRAI
+parler_michaud;parler_homme;4;Tu veux parler à Monsieur Michaud ?;Je voudrais parler à Monsieur Michaud, le directeur.;;0,8;;;michaud;VRAI;FAUX
+parler_clemenceau;parler_homme;5;Tu veux parler à Monsieur Clemenceau ?;Je voudrais parler à Monsieur Clemenceau, le chef de service éducatif.;;0,8;;;clemenceau;VRAI;FAUX
+parler_thierry;parler_homme;6;Tu veux parler à Thierry ?;Je voudrais parler à Thierry, le kiné.;;0,8;;;thierry;VRAI;FAUX
+parler_vincent;parler_homme;7;Tu veux parler à Vincent ?;Je voudrais parler à Vincent, l'éducateur sportif.;;0,8;;;vincent;VRAI;FAUX
+parler_eric;parler_homme;8;Tu veux parler à Éric ?;Je voudrais parler à Éric.;;0,8;;;eric;VRAI;FAUX
+parler_fabien;parler_homme;9;Tu veux parler à Fabien ?;Je voudrais parler à Fabien.;;0,8;;;fabien;VRAI;FAUX
+parler_maman;parler_femme;1;Tu veux parler à maman ?;Je voudrais parler à maman.;;6;;;maman;VRAI;VRAI
+parler_amandine;parler_femme;2;Tu veux parler à Amandine ?;Je voudrais parler à Amandine.;;1;;;amandine;VRAI;VRAI
+parler_flora;parler_femme;3;Tu veux parler à Flora ?;Je voudrais parler à Flora.;;1;;;flora;VRAI;VRAI
+parler_chaouch;parler_femme;4;Tu veux parler à Madame Chaouch ?;Je voudrais parler à Madame Chaouch, la cheffe de service médical et soins quotidiens.;;0,8;;;chaouch;VRAI;FAUX
+parler_alexiane;parler_femme;5;Tu veux parler à Alexiane ?;Je voudrais parler à Alexiane, l'ergothérapeute.;;0,8;;;alexiane;VRAI;FAUX
+parler_sirine;parler_femme;6;Tu veux parler à Sirine ?;Je voudrais parler à Sirine, la coordinatrice de parcours.;;0,8;;;sirine;VRAI;FAUX
+parler_laurine;parler_femme;7;Tu veux parler à Laurine ?;Je voudrais parler à Laurine, la psychomotricienne.;;0,8;;;laurine;VRAI;FAUX
+parler_ondine;parler_femme;8;Tu veux parler à Ondine ?;Je voudrais parler à Ondine, la psychologue.;;0,8;;;ondine;VRAI;FAUX
+parler_melissa;parler_femme;9;Tu veux parler à Mélissa ?;Je voudrais parler à Mélissa, l'ostéopathe.;;0,8;;;melissa;VRAI;FAUX
+parler_marine;parler_femme;10;Tu veux parler à Marine ?;Je voudrais parler à Marine, l'infirmière.;;0,8;;;marine;VRAI;FAUX
+parler_jeanette;parler_femme;11;Tu veux parler à Jeanette ?;Je voudrais parler à Jeanette, l'infirmière.;;0,8;;;jeanette;VRAI;FAUX
+parler_lyliane;parler_femme;12;Tu veux parler à Lyliane ?;Je voudrais parler à Lyliane, l'éducatrice.;;0,8;;;lyliane;VRAI;FAUX
+parler_fatima;parler_femme;13;Tu veux parler à Fatima ?;Je voudrais parler à Fatima, des soins quotidiens.;;0,8;;;fatima;VRAI;FAUX
+parler_francoise;parler_femme;14;Tu veux parler à Françoise ?;Je voudrais parler à Françoise.;;0,8;;;francoise;VRAI;FAUX
+parler_christine_ni;parler_femme;15;Tu veux parler à Christine Ni… ?;Je voudrais parler à Christine Ni….;;0,8;;;christine_ni;VRAI;FAUX
+parler_christine_lu;parler_femme;16;Tu veux parler à Christine Lu… ?;Je voudrais parler à Christine Lu….;;0,8;;;christine_lu;VRAI;FAUX
+parler_veronique;parler_femme;17;Tu veux parler à Véronique ?;Je voudrais parler à Véronique.;;0,8;;;veronique;VRAI;FAUX
+parler_fatima_repas;parler_femme;18;Tu veux parler à Fatima, des repas ?;Je voudrais parler à Fatima, des repas.;;0,8;;;fatima_repas;VRAI;FAUX
+parler_maimouna;parler_femme;19;Tu veux parler à Maimouna ?;Je voudrais parler à Maimouna.;;0,8;;;maimouna;VRAI;FAUX
+copains_salle_fetes;copains;1;Dans la salle des fêtes ?;Je voudrais être avec les copains dans la salle des fêtes.;;2;;;;VRAI;FAUX
+copains_gymnase;copains;2;Dans le gymnase ?;Je voudrais être avec les copains dans le gymnase.;;2;;;;VRAI;FAUX
+copains_salle_manger;copains;3;Dans la salle à manger ?;Je voudrais être avec les copains dans la salle à manger.;;2;;;;VRAI;FAUX
+copains_boites_lettres;copains;4;À côté des boîtes aux lettres ?;Je voudrais être avec les copains à côté des boîtes aux lettres.;;1;;;;VRAI;FAUX
+chambre_porte_fermee;chambre;1;Avec la porte fermée ?;Je voudrais aller dans ma chambre, porte fermée.;;2;;chambre_porte_ouverte;;VRAI;VRAI
+chambre_porte_ouverte;chambre;2;Avec la porte ouverte ?;Je voudrais aller dans ma chambre, porte ouverte.;;2;;chambre_porte_fermee;;VRAI;VRAI
+comptines;musique;1;Des comptines ?;J'aimerais écouter des comptines.;;1;;;;VRAI;VRAI
+radio;musique;2;La radio ?;J'aimerais écouter la radio.;;1;;;;VRAI;VRAI
+musique_lit;musique;3;Dans ton lit ?;J'aimerais écouter de la musique dans mon lit.;;2;;musique_assise;;VRAI;VRAI
+musique_assise;musique;4;Assise ?;J'aimerais écouter de la musique, assise.;;2;;musique_lit;;VRAI;VRAI
+tele_lit;tele;1;Dans ton lit ?;J'aimerais regarder la télé dans mon lit.;;1;;tele_assise;;VRAI;VRAI
+tele_assise;tele;2;Assise ?;J'aimerais regarder la télé, assise.;;1;;tele_lit;;VRAI;VRAI
+gymnase;sport;1;Au gymnase ?;J'aimerais faire une activité au gymnase.;;1;;;;VRAI;FAUX
+sarbacane;sport;2;De la sarbacane ?;J'aimerais faire de la sarbacane.;;1;;;;VRAI;FAUX
+boccia;sport;3;Regarder la boccia ?;J'aimerais regarder la boccia.;;2;;;;VRAI;FAUX
+arts_creatifs;creatif;1;Les arts créatifs ?;J'aimerais faire l'atelier arts créatifs.;;1;;;;VRAI;FAUX
+chant;creatif;2;Le chant ?;J'aimerais faire l'atelier chant.;;1;;;;VRAI;FAUX
+karaoke;creatif;3;Le karaoké ?;J'aimerais aller au karaoké.;;1;;;;VRAI;FAUX
+cuisine;creatif;4;La cuisine ?;J'aimerais faire l'atelier cuisine.;;1;;;;VRAI;FAUX
+lecture;creatif;5;La lecture ?;J'aimerais faire l'atelier lecture.;;1;;;;VRAI;FAUX
+bien_homme;bien_passe;1;C'est à propos d'un homme ?;Je voudrais raconter quelque chose qui s'est bien passé, avec un homme.;;1;;;;VRAI;VRAI
+bien_femme;bien_passe;2;C'est à propos d'une femme ?;Je voudrais raconter quelque chose qui s'est bien passé, avec une femme.;;1;;;;VRAI;VRAI
+bien_lieu;bien_passe;3;C'est à propos d'un lieu ?;Je voudrais raconter quelque chose qui s'est bien passé, dans un lieu.;;1;;;;VRAI;VRAI
+mal_homme;mal_passe;1;C'est à propos d'un homme ?;Je voudrais raconter quelque chose qui s'est mal passé, avec un homme.;;1;;;;VRAI;VRAI
+mal_femme;mal_passe;2;C'est à propos d'une femme ?;Je voudrais raconter quelque chose qui s'est mal passé, avec une femme.;;1;;;;VRAI;VRAI
+mal_lieu;mal_passe;3;C'est à propos d'un lieu ?;Je voudrais raconter quelque chose qui s'est mal passé, dans un lieu.;;1;;;;VRAI;VRAI

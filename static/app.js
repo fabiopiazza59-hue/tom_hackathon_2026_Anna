@@ -1,5 +1,7 @@
 import { createHeadTracker } from './head-tracking.js';
 import { createLocalApi } from './local-data.js';
+import { startHierarchy, answerHierarchy, availableChildren, LEVEL_NAMES, LEVELS } from './hierarchy.js';
+import { createBankEditor } from './bank-editor.js';
 
 const adminPage = /^\/admin\/?$/.test(location.pathname);
 
@@ -133,6 +135,7 @@ function scoreOf(id) {
   return { score: 0.5 * hit + 0.3 * use + 0.2 * speed, hit, a: x.a, avg };
 }
 function ordered(list) {
+  if (S.bank) return list;
   if (!S.settings.reco || !Array.isArray(list)) return list;
   return list.map((it, i) => ({ it, i, s: scoreOf(it.id).score }))
     .sort((a, b) => (b.it.urgent ? 1 : 0) - (a.it.urgent ? 1 : 0) || (a.it.action === 'spell') - (b.it.action === 'spell') || b.s - a.s || a.i - b.i)
@@ -148,6 +151,7 @@ function themeItems(t) {
   return [...ordered(ppl), ...t.items];
 }
 function suggestions() {
+  if (S.bank) return [];
   const now = Date.now(), hr = new Date().getHours(), map = new Map();
   S.history.filter(e => e.result === 'resolu' && e.path.length > 1 && theme(e.theme)).forEach(e => {
     const k = e.theme + '|' + e.path.join('|'), dh = Math.abs(new Date(e.ts).getHours() - hr);
@@ -161,6 +165,7 @@ function suggestions() {
 const cur = () => { const top = F.stack[F.stack.length - 1]; return top.list[top.idx]; };
 function goHome() { F = { mode: 'home' }; undo = []; render(); }
 function startTheme(id, pre) {
+  if (S.bank) return startBank(id);
   const t = theme(id); if (!t) return;
   const list = themeItems(t);
   if (!list.length) { toast(`« ${t.label} » n’a pas encore de questions : ajoute-les dans l’espace admin.`); return goHome(); }
@@ -170,6 +175,7 @@ function startTheme(id, pre) {
   showQ();
 }
 function startScan() {
+  if (S.bank) return startBank();
   const list = S.themes.filter(t => themeItems(t).length).map(t => ({ t, u: S.history.filter(e => e.theme === t.id).length })).sort((a, b) => b.u - a.u)
     .map(({ t }) => ({ id: 'scan.' + t.id, l: t.label, q: `C’est à propos de : ${t.label} ?`, goto: t.id }));
   F = { mode: 'q', theme: 'scan', stack: [{ list, idx: 0 }], path: ['Choix du thème'], asked: [], t0: Date.now(), priv: false };
@@ -182,6 +188,7 @@ function quickQ(sg) {
   return 'Encore : ' + sg.path.slice(1).join(', ').toLowerCase() + ' ?';
 }
 function startQuick(sg) {
+  if (S.bank) return startBank(sg.theme);
   F = { mode: 'q', theme: sg.theme, stack: [{ list: [{ id: 'quick', l: sg.path[sg.path.length - 1], q: quickQ(sg) }], idx: 0 }], path: sg.path.slice(0, -1), asked: [], t0: Date.now(), priv: false, quick: true };
   undo = []; showQ();
 }
@@ -194,6 +201,7 @@ function answer(a) {
   if (a === 'parler') return talk();
   if (view !== 'patient') return;
   sayAnswer(a);
+  if (F.mode === 'hierarchy') return answerBank(a);
   if (F.mode === 'home') { if (a === 'oui') startScan(); return; }
   if (F.mode === 'spell') return spellAnswer(a);
   if (F.mode === 'deeper') {
@@ -201,6 +209,7 @@ function answer(a) {
     if (F.entry) { F.entry.notes.push([F.dq, a]); enqueue('note', { conversationId: F.entry.id, question: F.dq, answer: a }); }
     F.mode = 'done'; render(); return;
   }
+  if (F.mode === 'done' && F.hierarchy) { if (a === 'oui') startBank(); else goHome(); return; }
   if (F.mode === 'done') { if (a === 'oui') { (F.theme === 'scan' || F.theme === 'parler' || F.quick) ? startScan() : startTheme(F.theme); } else goHome(); return; }
   if (F.mode !== 'q') return;
   undo.push(JSON.stringify(F));
@@ -241,14 +250,45 @@ function conclude(result, it) {
   }
   render();
   if (F.ask) return speak(F.ask, true);
-  speak((result === 'non-trouve' ? 'Je n’ai pas trouvé. Tu veux épeler ?' : 'Compris : ' + F.path.slice(1).join(', ') + '.') + ' Autre chose ?');
+  speak(F.summaryText || ((result === 'non-trouve' ? 'Je n’ai pas trouvé. Tu veux épeler ?' : 'Compris : ' + F.path.slice(1).join(', ') + '.') + ' Autre chose ?'));
   if (F.urgent) chime();
 }
 function back() {
+  if (F.hierarchy) { const previous = undo.pop(); if (!previous) return goHome(); F = JSON.parse(previous); render(); speak(F.hierarchy.current.q); return; }
   if (F.mode === 'spell' || F.mode === 'home') return goHome();
   if (F.mode === 'deeper') { F.mode = 'done'; return render(); }
   const s = undo.pop(); if (!s) return goHome();
   F = JSON.parse(s); showQ();
+}
+
+/* Parcours des cinq niveaux de la banque CSV. */
+function startBank(targetId = null) {
+  F = { mode: 'hierarchy', hierarchy: startHierarchy(S.bank, { context: S.settings.context, targetId }),
+    theme: 'scan', path: [], asked: [], t0: Date.now(), priv: false };
+  undo = [];
+  render(); speak(F.hierarchy.current.q);
+}
+function answerBank(answer) {
+  const node = F.hierarchy.current;
+  undo.push(JSON.stringify(F));
+  const ms = Date.now() - (F.qTs || F.t0);
+  F.asked.push(node.id);
+  F.hierarchy = answerHierarchy(S.bank, F.hierarchy, answer);
+  const chosen = F.hierarchy.path;
+  F.path = chosen.map(n => n.level === 'master' ? `${n.q} ${n.response === 'oui' ? 'Oui' : 'Non'}` : n.label);
+  F.theme = chosen.find(n => n.level === 'subcategory')?.id || chosen.find(n => n.level === 'category')?.id || 'scan';
+  enqueue('events', { events: [{ key: node.id, theme: F.theme, answer, ms, at: Date.now() }] });
+  if (F.hierarchy.done) {
+    F.summaryText = F.hierarchy.result.text;
+    return conclude(F.hierarchy.result.found ? 'resolu' : 'non-trouve');
+  }
+  F.qTs = Date.now(); render(); speak(F.hierarchy.current.q);
+}
+function renderBankQuestion() {
+  const flow = F.hierarchy, node = flow.current, frame = flow.frames.at(-1);
+  return `<div class="qv">${crumbs()}<span class="pill">${LEVEL_NAMES[LEVELS.indexOf(node.level)]}</span>
+    <h1 class="q" tabindex="-1">${esc(node.q)}</h1>
+    <div class="qmeta"><span>${frame ? `${frame.index + 1} / ${frame.nodes.length}` : 'Question de départ'}</span><span>Répondre par Oui ou Non</span></div></div>`;
 }
 
 /* épellation lettre par lettre */
@@ -310,7 +350,7 @@ function render() {
   $('#bar').hidden = view !== 'patient';
   m.classList.toggle('board-mode', view === 'patient' && F.mode === 'home');
   if (view === 'admin') { m.innerHTML = renderAdmin(); bindAdmin(); return; }
-  m.innerHTML = F.mode === 'home' ? renderBoard() : F.mode === 'q' ? renderQ() : F.mode === 'done' ? renderDone() : F.mode === 'deeper' ? renderDeeper() : renderSpell();
+  m.innerHTML = F.mode === 'hierarchy' ? renderBankQuestion() : F.mode === 'home' ? renderBoard() : F.mode === 'q' ? renderQ() : F.mode === 'done' ? renderDone() : F.mode === 'deeper' ? renderDeeper() : renderSpell();
   m.scrollTop = 0;
 }
 function renderTop() {
@@ -349,9 +389,10 @@ function renderBoard() {
       `<button class="cell" style="--h:40" data-act="spell">${ic('spell')}<b>Épeler</b><small>Lettre par lettre</small></button>`,
     ];
   } else {
-    const ts = S.themes.filter(t => t.group === cat);
+    const permitted = S.bank ? new Set(availableChildren(S.bank.root.children.find(c => c.id === cat), null, S.settings.context).map(n => n.id)) : null;
+    const ts = S.themes.filter(t => t.group === cat && (!permitted || permitted.has(t.id)));
     head = [curType.name, ts.length + ' thème' + (ts.length > 1 ? 's' : '')];
-    cells = [];
+    cells = S.bank ? [`<button class="cell" style="--h:${curType.h}" data-category="${esc(cat)}">${ic(curType.icon)}<b>Commencer</b><small>${esc(S.bank.root.children.find(c => c.id === cat)?.q)}</small></button>`] : [];
     ts.forEach(t => {
       cells.push(`<button class="cell" style="--h:${curType.h}" data-theme="${t.id}">${ic(t.private ? 'intime' : iconFor(t))}<b>${esc(t.label)}</b><small>${esc(t.sub || '')}</small></button>`);
       if (t.dynamic) peopleOf(t).forEach(p => cells.push(`<button class="cell" style="--h:${curType.h}" data-person="${p.id}">${avatar(p)}<b>${esc(p.name)}</b><small>${esc(p.role)}</small></button>`));
@@ -377,7 +418,7 @@ const parsePlan = () => (S.plan || '').split('\n').map(l => l.trim()).filter(Boo
 function renderDone() {
   const plan = F.action === 'planning' ? `<ul class="plist">${parsePlan().map(p => `<li><time>${p.t}</time>${esc(p.label)}</li>`).join('') || '<li class="muted">Aucun programme saisi.</li>'}</ul>` : '';
   const time = F.action === 'heure' ? `<p class="big" style="font-size:26px">${new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} · ${fmtT(Date.now())}</p>` : '';
-  const title = F.result === 'non-trouve' ? 'Besoin non trouvé' : F.result === 'message' ? '« ' + F.path[F.path.length - 1] + ' »' : (F.path.slice(1).join(' › ') || F.path[0]);
+  const title = F.summaryText || (F.result === 'non-trouve' ? 'Besoin non trouvé' : F.result === 'message' ? '« ' + F.path[F.path.length - 1] + ' »' : (F.path.slice(1).join(' › ') || F.path[0]));
   const asked = new Set(F.entryNotes.map(n => n[0])), dl = deeperList();
   const main = F.ask
     ? `<span class="tag">${esc(name())} ${F.say ? 'te dit' : 'te demande'}</span><p class="big ask">${esc(F.ask)}</p><div><button class="btn" data-act="reread">${ic('voice')} Relire à voix haute</button></div>`
@@ -389,7 +430,7 @@ function renderDone() {
       ${F.result === 'non-trouve' ? `<div><button class="btn primary" data-act="spellctx">${ic('spell')} Épeler avec ${esc(name())}</button></div>` : ''}
       ${F.entryNotes.length ? `<ul class="notes">${F.entryNotes.map(([q, a]) => `<li><span>${esc(q)}</span><span class="${a === 'oui' ? 'ans-y' : 'ans-n'}">${a === 'oui' ? 'Oui' : 'Non'}</span></li>`).join('')}</ul>` : ''}
       <p class="next">Autre chose, ${esc(name())} ?</p>
-      <span class="muted" style="font-size:13.5px">Oui : continuer dans ce thème · Non : accueil</span>
+      <span class="muted" style="font-size:13.5px">${F.hierarchy ? 'Oui : recommencer · Non : pictogrammes' : 'Oui : continuer dans ce thème · Non : accueil'}</span>
     </div>
     ${dl.length ? `<div class="deeper"><h3>${ic('deeper')} Pour aller plus loin</h3>
       <p>Pour l’entourage : touche une question pour la poser à ${esc(name())}.</p>
@@ -410,6 +451,7 @@ $('#main').addEventListener('click', e => {
   const g = x => e.target.closest(x);
   let b;
   if ((b = g('[data-cat]'))) { cat = b.dataset.cat; return render(); }
+  if ((b = g('[data-category]'))) return startBank(b.dataset.category);
   if ((b = g('[data-theme]'))) return startTheme(b.dataset.theme);
   if ((b = g('[data-person]'))) { const p = S.people.find(x => x.id === b.dataset.person), th = personTheme(p); return startTheme(th, `${th}.${p.id}`); }
   if ((b = g('[data-sugg]'))) return startQuick(suggestions()[+b.dataset.sugg]);
@@ -435,7 +477,7 @@ document.addEventListener('keydown', e => {
 function flash(a) { const el = $({ oui: '#bYes', non: '#bNo', parler: '#bTalk' }[a]); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 350); }
 
 /* ================================================================ espace soignant */
-let tab = 'resume', qType = '', qTheme = '', qSearch = '', histF = '', armed = '';
+let tab = 'resume', histF = '', armed = '';
 
 function openAdmin() { location.assign('/admin'); }
 function leaveAdmin() { location.assign('/parler'); }
@@ -450,7 +492,7 @@ async function adm(action, payload, okMsg) {
     else toast(e.message);
   }
 }
-const walkItems = (list, d, out, t) => { (list || []).forEach(it => { out.push({ it, t, d }); if (Array.isArray(it.then)) walkItems(it.then, d + 1, out, t); }); return out; };
+
 
 function renderAdmin() {
   return `<div class="adm"><p class="muted local-notice">Données conservées sur cet appareil uniquement.</p>
@@ -478,56 +520,8 @@ function admResume() {
         <div>${e.urgent ? '<span class="pill u">prioritaire</span> ' : ''}${pill(e.result)}</div></li>`).join('') || '<li class="muted">Aucun échange pour l’instant.</li>'}</ul>
       <p class="muted" style="font-size:13px;margin:10px 0 0">${ic('intime')} Les échanges « Vie privée » ne sont jamais enregistrés.</p></div>`;
 }
-function admQuestions() {
-  if (!qType || !S.types.some(t => t.id === qType)) qType = S.types[0]?.id || '';
-  const ts = S.themes.filter(t => t.group === qType);
-  if (!ts.some(t => t.id === qTheme)) qTheme = ts[0]?.id || '';
-  const t = theme(qTheme), q = qSearch.trim().toLowerCase();
-  let rows;
-  if (q) {
-    rows = []; S.themes.forEach(th => walkItems(th.items, 0, rows, th));
-    rows = rows.filter(r => (r.it.q + ' ' + r.it.l).toLowerCase().includes(q)).map(r => ({ ...r, d: 0 })).sort((a, b) => scoreOf(b.it.id).score - scoreOf(a.it.id).score);
-  } else rows = t ? walkItems(t.items, 0, [], t) : [];
-  const row = ({ it, t: th, d }) => {
-    const s = scoreOf(it.id);
-    return `<li class="l${Math.min(d, 2)}"><div class="t">${esc(it.q)}<small>${q ? esc(th.label) + ' · ' : ''}${s.a} usages · ${s.a ? Math.round(s.hit * 100) + ' % oui' : 'nouvelle'}${it.urgent ? ' · prioritaire' : ''}${it.then === '@i' ? ' · + intensité' : ''}</small></div>
-      <span class="sbar" title="Score de recommandation"><b style="width:${Math.round(s.score * 100)}%"></b></span>
-      <button class="btn sm danger" data-del="${esc(it.id)}">${armed === it.id ? 'Confirmer' : 'Suppr.'}</button></li>`;
-  };
-  const parents = t ? walkItems(t.items, 0, [], t).filter(r => r.it.then !== '@i' && !r.it.action) : [];
-  return `<input type="search" id="qSearch" placeholder="Chercher dans la banque de questions…" aria-label="Chercher une question" value="${esc(qSearch)}">
-    ${q ? '' : `<div class="chips">${S.types.map(ty => `<button data-qtype="${esc(ty.id)}" class="${ty.id === qType ? 'cur' : ''}">${esc(ty.short)}</button>`).join('')}</div>
-    ${ts.length ? `<div class="chips">${ts.map(x => `<button data-qtheme="${esc(x.id)}" class="${x.id === qTheme ? 'cur' : ''}">${esc(x.label)}</button>`).join('')}</div>` : '<p class="muted">Aucun thème dans ce type. Crée-en un ci-dessous.</p>'}`}
-    <div class="card">
-      ${q ? `<h3>${rows.length} résultat(s)</h3>` : t ? `<h3>${esc(t.label)}${t.private ? ' <span class="pill">sans historique</span>' : ''}</h3>${t.dynamic ? `<p class="muted" style="margin:0 0 6px;font-size:13.5px">+ une question par personne (${esc(t.peopleKinds.join(', '))}), gérées dans Réglages.</p>` : ''}` : ''}
-      <ul class="rows">${rows.map(row).join('')}</ul>
-      <p class="muted" style="font-size:12.5px;margin:8px 0 0">La barre = score de recommandation (50 % taux de oui, 30 % usage, 20 % rapidité). Les meilleures questions sont posées en premier.</p>
-      ${t && !q ? `<details ${rows.length ? '' : 'open'}><summary>+ Ajouter une question</summary>
-        <form class="fgrid c2" id="fQ">
-          <label class="fl">Type<select id="qKind"><option value="question">Question à ${esc(name())}</option><option value="ask">${esc(name())} demande…</option><option value="say">${esc(name())} dit…</option></select></label>
-          <label class="fl">Texte (tutoiement)<input type="text" id="qText" placeholder="Tu veux… ?" required maxlength="300"></label>
-          <label class="fl">Mot-clé pour le résumé<input type="text" id="qLabel" placeholder="ex. Lunettes" required maxlength="60"></label>
-          <label class="fl">Placer sous<select id="qParent"><option value="">Début du thème</option>${parents.map(({ it, d }) => `<option value="${esc(it.id)}">${'— '.repeat(d + 1)}${esc(it.l)}</option>`).join('')}</select></label>
-          <label class="ck"><input type="checkbox" id="qUrg"> Prioritaire</label>
-          <label class="ck"><input type="checkbox" id="qInt"> Demander l’intensité</label>
-          <button class="btn primary">Ajouter</button>
-        </form></details>
-      <details><summary>Pour aller plus loin (${t.deeper.length})</summary>
-        <ul class="rows">${t.deeper.map(d => `<li><div class="t">${esc(d.text)}</div><button class="btn sm danger" data-ddel="${esc(d.id)}">Retirer</button></li>`).join('')}</ul>
-        <form class="fgrid c2" id="fD" style="margin-top:8px"><input type="text" id="dText" placeholder="Question pour l’entourage" aria-label="Question pour l’entourage" required maxlength="300"><button class="btn primary">Ajouter</button></form>
-      </details>` : ''}
-    </div>
-    ${q ? '' : `<div class="card"><details style="border:none;margin:0;padding:0"><summary>+ Nouveau thème ou type</summary>
-      <form class="fgrid c2" id="fT">
-        <label class="fl">Nom du thème<input type="text" id="tName" required maxlength="60"></label>
-        <label class="fl">Type<select id="tGroup">${S.types.map(g => `<option value="${esc(g.id)}" ${g.id === qType ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}</select></label>
-        <label class="ck"><input type="checkbox" id="tPriv"> Sans historique</label>
-        <button class="btn primary">Créer le thème</button>
-      </form>
-      <form class="fgrid c2" id="fTy" style="margin-top:12px"><label class="fl">Nouveau type (catégorie à gauche)<input type="text" id="tyName" placeholder="ex. Santé" required maxlength="40"></label><button class="btn">Créer le type</button></form>
-      ${ts.length ? '' : `<button class="btn danger" style="margin-top:12px" data-tydel="${esc(qType)}">Supprimer ce type vide</button>`}
-    </details></div>`}`;
-}
+const bankEditor = createBankEditor({ getBank: () => S.bank, mutate: adm, rerender: render });
+function admQuestions() { return bankEditor.render(); }
 function admSettings() {
   return `<div class="card"><h3>Personnes</h3>
       <ul class="rows">${S.people.map(p => `<li>${avatar(p)}<div class="t"><b>${esc(p.name)}</b><small>${esc(p.role)} · ${esc(p.kind)}</small></div><button class="btn sm danger" data-pdel="${esc(p.id)}">${armed === p.id ? 'Confirmer' : 'Retirer'}</button></li>`).join('') || '<li class="muted">Aucune personne pour l’instant.</li>'}</ul>
@@ -543,7 +537,7 @@ function admSettings() {
       <div style="margin-top:8px;display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><span class="muted" style="font-size:13px">Une ligne par moment : HH:MM activité</span><button class="btn primary" id="savePlan">Enregistrer</button></div></div>
     <div class="card"><h3>Options</h3>
       <div class="fgrid">
-        <label class="ck"><input type="checkbox" id="reco" ${S.settings.reco ? 'checked' : ''}> Poser d’abord les questions les plus efficaces</label>
+        <label class="fl">Lieu de la conversation<select id="context">${[['tous', 'Tous les lieux'], ['centre', 'Au centre'], ['domicile', 'Au domicile']].map(([v, label]) => `<option value="${v}" ${S.settings.context === v ? 'selected' : ''}>${label}</option>`).join('')}</select></label><p class="muted">Les questions suivent l’ordre défini dans la banque.</p>
         <label class="fl">Amplitude du mouvement de tête : <b id="sensV">${Math.round(S.settings.sens * 100)} %</b><input type="range" id="sens" min="0.5" max="1.6" step="0.05" value="${S.settings.sens}"></label>
       </div></div>
     <div class="card"><h3>Cet appareil</h3>
@@ -552,23 +546,14 @@ function admSettings() {
 }
 function bindAdmin() {
   const m = $('#main'), on = (sel, ev, fn) => m.querySelectorAll(sel).forEach(el => el.addEventListener(ev, fn));
+  if (tab === 'questions') bankEditor.bind(m);
   const confirmOr = (id, fn) => { if (armed !== id) { armed = id; return render(); } fn(); };
   on('[data-tab]', 'click', e => { tab = e.currentTarget.dataset.tab; armed = ''; render(); });
   on('#histF', 'change', e => { histF = e.target.value; render(); });
-  on('[data-qtype]', 'click', e => { qType = e.currentTarget.dataset.qtype; qTheme = ''; render(); });
-  on('[data-qtheme]', 'click', e => { qTheme = e.currentTarget.dataset.qtheme; render(); });
-  on('#qSearch', 'input', e => { qSearch = e.target.value; const pos = e.target.selectionStart; render(); const s = $('#qSearch'); s.focus(); s.setSelectionRange(pos, pos); });
-  on('[data-del]', 'click', e => { const id = e.currentTarget.dataset.del; confirmOr(id, () => adm('delete-question', { id }, 'Question supprimée')); });
-  on('[data-ddel]', 'click', e => adm('delete-followup', { id: e.currentTarget.dataset.ddel }));
-  on('[data-tydel]', 'click', e => adm('delete-type', { id: e.currentTarget.dataset.tydel }, 'Type supprimé'));
   on('[data-pdel]', 'click', e => { const id = e.currentTarget.dataset.pdel; confirmOr(id, () => adm('delete-person', { id }, 'Personne retirée')); });
-  on('#fQ', 'submit', e => { e.preventDefault(); adm('add-question', { themeId: qTheme, parentId: $('#qParent').value, label: $('#qLabel').value, text: $('#qText').value, kind: $('#qKind').value, urgent: $('#qUrg').checked, intensity: $('#qInt').checked }, 'Question ajoutée'); });
-  on('#fD', 'submit', e => { e.preventDefault(); adm('add-followup', { themeId: qTheme, text: $('#dText').value }); });
-  on('#fT', 'submit', async e => { e.preventDefault(); const typeId = $('#tGroup').value; const r = await adm('add-theme', { label: $('#tName').value, typeId, private: $('#tPriv').checked }, 'Thème créé'); if (r?.id) { qType = typeId; qTheme = r.id; render(); } });
-  on('#fTy', 'submit', async e => { e.preventDefault(); const r = await adm('add-type', { name: $('#tyName').value }, 'Type créé : ajoute-lui un thème'); if (r?.id) { qType = r.id; render(); } });
   on('#fP', 'submit', e => { e.preventDefault(); adm('add-person', { name: $('#pName').value, role: $('#pRole').value, kind: $('#pKind').value }, 'Personne ajoutée'); });
   on('#savePlan', 'click', () => adm('save-plan', { plan: $('#plan').value }, 'Programme enregistré'));
-  on('#reco', 'change', e => adm('save-settings', { ...S.settings, reco: e.target.checked }));
+  on('#context', 'change', e => adm('save-settings', { ...S.settings, context: e.target.value }, 'Lieu enregistré'));
   on('#sens', 'input', e => { $('#sensV').textContent = Math.round(e.target.value * 100) + ' %'; });
   on('#sens', 'change', e => adm('save-settings', { ...S.settings, sens: +e.target.value }, 'Amplitude enregistrée'));
 
@@ -606,10 +591,18 @@ async function boot() {
     return;
   }
   document.title = `Parler avec ${name()}`;
-  render();
+  if (!adminPage && S.bank) startBank(); else render();
   flush();
   setInterval(() => { const c = document.querySelector('.clock'); if (c) { const now = new Date(); c.textContent = now.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + fmtT(now); } }, 30000);
 }
 boot();
 
-addEventListener('storage', e => { if (e.key === 'anna-local-data-v1') reload().then(render).catch(x => toast(x.message)); });
+addEventListener('storage', e => {
+  if (e.key !== 'anna-local-data-v1') return;
+  const bankBefore = JSON.stringify(S?.bank), contextBefore = S?.settings.context;
+  reload().then(() => {
+    const changed = bankBefore !== JSON.stringify(S.bank) || contextBefore !== S.settings.context;
+    if (changed && view === 'patient' && F.mode === 'hierarchy') { startBank(); toast('Questions mises à jour. Le parcours reprend au départ.'); }
+    else render();
+  }).catch(x => toast(x.message));
+});

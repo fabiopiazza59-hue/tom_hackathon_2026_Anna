@@ -59,7 +59,7 @@ export function buildBootstrap({ patient, types, themes, questions, followups, p
   return {
     patientName: patient.display_name,
     plan: patient.daily_plan || '',
-    settings: { reco: patient.settings?.reco !== false, sens: Number(patient.settings?.sens) || 1 },
+    settings: { reco: patient.settings?.reco !== false, sens: Number(patient.settings?.sens) || 1, context: patient.settings?.context || 'tous' },
     hasPin: !!patient.admin_pin_hash,
     isAdmin: !!isAdmin,
     types: types.map(t => ({ id: t.id, name: t.name, short: t.short_label, icon: t.icon, h: t.hue })),

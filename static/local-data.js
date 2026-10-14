@@ -1,6 +1,7 @@
 // La banque, les réglages et l’historique restent sur cet appareil.
-import { TYPES, THEMES, DEMO_PEOPLE, DEFAULT_PLAN } from './defaults.js';
-import { flattenDefaults, buildBootstrap, slug, PEOPLE_KINDS } from './content.js';
+import { buildBootstrap, slug, PEOPLE_KINDS } from './content.js';
+import { QUESTION_BANK } from './question-bank.js';
+import { bankRows, findEntry, LEVELS } from './hierarchy.js';
 
 const KEY = 'anna-local-data-v1';
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
@@ -13,24 +14,30 @@ export function createLocalApi({ storage, authorize }) {
   function load() {
     let raw;
     try { raw = storage.getItem(KEY); } catch { fail('Le stockage local est indisponible. Autorisez-le pour conserver les échanges.'); }
+    let db;
     if (raw) {
-      try { return JSON.parse(raw); } catch { fail('Les données locales sont illisibles. Contactez l’équipe avant de les effacer.'); }
+      try { db = JSON.parse(raw); } catch { fail('Les données locales sont illisibles. Contactez l’équipe avant de les effacer.'); }
+      if (db.bank) return db;
+      // Garder la banque précédente et toutes ses modifications avant la migration.
+      try { if (!storage.getItem('anna-before-csv-v1')) storage.setItem('anna-before-csv-v1', raw); }
+      catch { fail('Sauvegarde de l’ancienne banque impossible. L’import a été interrompu.'); }
     }
-    const rows = flattenDefaults(TYPES, THEMES);
-    return {
-      patient: { display_name: 'Anna', daily_plan: DEFAULT_PLAN, settings: { reco: true, sens: 1 } },
-      ...rows,
-      followups: rows.followups.map((f, i) => ({ ...f, id: String(i + 1) })),
-      people: DEMO_PEOPLE.map(p => ({ ...p, id: slug(p.name) })),
-      events: [], conversations: [], notes: [],
+    db = {
+      patient: { display_name: 'Anna', daily_plan: '', settings: { sens: 1, context: 'tous', reco: false } },
+      people: [], events: [], conversations: [], notes: [], ...db,
+      bank: structuredClone(QUESTION_BANK),
     };
+    db.patient.settings = { ...db.patient.settings, reco: false, context: db.patient.settings?.context || 'tous' };
+    for (const name of ['types', 'themes', 'questions', 'followups']) delete db[name];
+    save(db);
+    return db;
   }
   function save(db) {
     try { storage.setItem(KEY, JSON.stringify(db)); }
     catch { fail('Enregistrement impossible : le stockage de cet appareil est plein ou bloqué.'); }
   }
-  const privateTheme = (db, id) => db.themes.some(t => t.id === id && t.is_private);
-  const privateQuestion = (db, key) => db.questions.some(q => q.is_private && (q.id === key || key.startsWith(q.id + '.')));
+  const isPrivate = (db, id) => { const entry = findEntry(db.bank, id); return !!entry && [entry.node, ...entry.path].some(n => n.private); };
+  const privateTheme = isPrivate, privateQuestion = isPrivate;
   const suffix = () => crypto.randomUUID().slice(0, 8);
 
   return async function localApi(method, path, body = {}) {
@@ -45,12 +52,12 @@ export function createLocalApi({ storage, authorize }) {
         else { s.asked++; s[e.answer === 'oui' ? 'yes' : 'no']++; s.rt_sum += e.ms; }
         stats.set(e.key, s);
       }
-      return buildBootstrap({
-        ...db, patient: { ...db.patient, admin_pin_hash: 'server-managed' }, stats: [...stats.values()],
+      return { bank: structuredClone(db.bank), ...buildBootstrap({
+        ...db, ...bankRows(db.bank), patient: { ...db.patient, admin_pin_hash: 'server-managed' }, stats: [...stats.values()],
         history: db.conversations.filter(c => new Date(c.created_at).getTime() > Date.now() - 60 * 864e5)
           .map(c => ({ ...c, notes: db.notes.filter(n => n.cid === c.id).map(n => [n.question, n.answer]) })).reverse(),
         isAdmin: await authorize(false),
-      });
+      }) };
     }
     if (area === 'data' && method === 'POST') {
       if (action === 'events') {
@@ -80,40 +87,40 @@ export function createLocalApi({ storage, authorize }) {
     if (area !== 'admin' || method !== 'POST') fail('Action inconnue', 404);
     if (!await authorize(true)) fail('Connexion admin requise', 403);
     let result = {};
-    if (action === 'add-question') {
-      const theme = db.themes.find(t => t.id === body.themeId);
-      if (!theme) fail('Thème introuvable', 404);
-      if (body.parentId && !db.questions.some(q => q.id === body.parentId && q.theme_id === theme.id)) fail('Question parente introuvable', 404);
-      const label = text(body.label, 60), raw = text(body.text, 300);
-      const kind = ['ask', 'say'].includes(body.kind) ? body.kind : 'question';
-      const id = `${body.parentId || theme.id}.${slug(label) || 'q'}-${suffix()}`;
-      db.questions.push({ id, theme_id: theme.id, parent_id: body.parentId || null, label,
-        text: kind === 'ask' ? `Demander : « ${raw} »` : kind === 'say' ? `Dire : « ${raw} »` : raw,
-        kind, ask_text: kind === 'question' ? null : raw, is_urgent: !!body.urgent, is_private: false,
-        has_intensity: kind === 'question' && !!body.intensity, position: db.questions.length });
-      result = { id };
-    } else if (action === 'delete-question') {
-      const gone = new Set([body.id]);
-      let count;
-      do { count = gone.size; for (const q of db.questions) if (gone.has(q.parent_id)) gone.add(q.id); } while (gone.size !== count);
-      db.questions = db.questions.filter(q => !gone.has(q.id));
-    } else if (action === 'add-theme') {
-      if (!db.types.some(t => t.id === body.typeId)) fail('Type introuvable', 404);
-      const label = text(body.label, 60), id = `${slug(label) || 'theme'}-${suffix()}`;
-      db.themes.push({ id, type_id: body.typeId, label, subtitle: '', icon: 'autre', is_private: !!body.private, people_kinds: null });
-      result = { id };
-    } else if (action === 'add-type') {
-      const name = text(body.name, 40), id = `${slug(name) || 'type'}-${suffix()}`;
-      db.types.push({ id, name, short_label: name.slice(0, 14), icon: 'autre', hue: [...name].reduce((n, c) => n + c.charCodeAt(0) * 7, 0) % 360 });
-      result = { id };
-    } else if (action === 'delete-type') {
-      if (db.themes.some(t => t.type_id === body.id)) fail('Ce type contient encore des thèmes', 409);
-      db.types = db.types.filter(t => t.id !== body.id);
-    } else if (action === 'add-followup') {
-      if (!db.themes.some(t => t.id === body.themeId)) fail('Thème introuvable', 404);
-      db.followups.push({ id: suffix(), theme_id: body.themeId, text: text(body.text, 300) });
-    } else if (action === 'delete-followup') {
-      db.followups = db.followups.filter(f => String(f.id) !== String(body.id));
+    if (action === 'save-node' || action === 'add-node') {
+      const existing = action === 'save-node' ? findEntry(db.bank, body.id) : null;
+      if (action === 'save-node' && !existing) fail('Question introuvable', 404);
+      const parent = body.parentId ? findEntry(db.bank, body.parentId)?.node : existing?.parent;
+      if (action === 'add-node' && !parent) fail('Parent introuvable', 404);
+      const level = existing?.node.level || LEVELS[LEVELS.indexOf(parent.level) + 1];
+      if (!level) fail('Une sous-question ne peut pas avoir de sous-niveau');
+      if (level !== 'master' && (!parent || LEVELS.indexOf(parent.level) !== LEVELS.indexOf(level) - 1)) fail('Niveau du parent invalide');
+      const node = existing?.node || { id: `${level}:${suffix()}`, level, children: [], icon: 'autre', hue: 180 };
+      const order = value => {
+        if (value == null || value === '') return null;
+        const n = Number(value);
+        if (!Number.isInteger(n) || n < 0) fail('L’ordre doit être un entier positif ou vide');
+        return n;
+      };
+      const branch = body.branch ?? node.branch ?? 'les_deux';
+      if (!['oui', 'non', 'les_deux'].includes(branch)) fail('Branche invalide');
+      Object.assign(node, {
+        q: text(body.q, 600), label: text(body.label || body.q, 100),
+        order: order(body.order), yesText: text(body.yesText || '', 600, true), noText: text(body.noText || '', 600, true),
+        centre: body.centre !== false, domicile: body.domicile !== false,
+      });
+      if (level === 'category') { node.orderYes = order(body.orderYes); node.orderNo = order(body.orderNo); }
+      if (level === 'subcategory') node.branch = branch;
+      if (!existing) parent.children.push(node);
+      else if (parent && parent !== existing.parent) {
+        existing.parent.children = existing.parent.children.filter(n => n.id !== node.id);
+        parent.children.push(node);
+      }
+      result = { id: node.id };
+    } else if (action === 'delete-node') {
+      const entry = findEntry(db.bank, body.id);
+      if (!entry?.parent) fail('La question de départ ne peut pas être supprimée');
+      entry.parent.children = entry.parent.children.filter(n => n.id !== body.id);
     } else if (action === 'add-person') {
       const name = text(body.name, 60), id = `${slug(name)}-${suffix()}`;
       db.people.push({ id, name, role: text(body.role || '', 80, true), kind: PEOPLE_KINDS.includes(body.kind) ? body.kind : 'Famille' });
@@ -123,7 +130,7 @@ export function createLocalApi({ storage, authorize }) {
     } else if (action === 'save-plan') {
       db.patient.daily_plan = text(body.plan || '', 4000, true);
     } else if (action === 'save-settings') {
-      db.patient.settings = { reco: body.reco !== false, sens: Math.max(.5, Math.min(1.6, Number(body.sens) || 1)) };
+      db.patient.settings = { reco: false, sens: Math.max(.5, Math.min(1.6, Number(body.sens) || 1)), context: ['tous', 'centre', 'domicile'].includes(body.context) ? body.context : db.patient.settings.context || 'tous' };
     } else fail('Action inconnue', 404);
     save(db); return { ok: true, ...result };
   };
