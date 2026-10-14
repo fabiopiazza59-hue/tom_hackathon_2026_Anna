@@ -17,8 +17,9 @@ export function createBankEditor({ getBank, mutate, rerender }) {
       ${node.level !== 'master' ? `<button class="btn sm danger" data-bank-delete="${esc(node.id)}">${armed === node.id ? 'Confirmer' : 'Supprimer'}<span class="sr-only"> : ${esc(node.q)}</span></button>` : ''}
     </div></div>`;
     if (!node.children.length) return `<div class="bank-leaf">${row}</div>`;
-    const open = search || node.level === 'master' || node.id === getBank().root.children[0]?.id;
-    return `<details class="bank-branch" ${open ? 'open' : ''}><summary>${esc(node.label)} <span class="muted">(${node.children.length})</span></summary>${row}<div class="bank-children">${orderedNodes(node.children).map(tree).join('')}</div></details>`;
+    const open = search || node.level === 'master' || node.id === orderedNodes(getBank().root.children)[0]?.id;
+    const rank = node.level === 'master' ? '' : `<span class="bank-rank">${node.order == null ? 'Sans ordre' : `Ordre ${esc(node.order)}`}</span> `;
+    return `<details class="bank-branch" ${open ? 'open' : ''}><summary>${rank}${esc(node.label)} <span class="muted">(${node.children.length})</span></summary>${row}<div class="bank-children">${orderedNodes(node.children).map(tree).join('')}</div></details>`;
   }
 
   function form() {

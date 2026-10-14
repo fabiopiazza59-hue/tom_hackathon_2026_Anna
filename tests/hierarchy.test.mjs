@@ -15,8 +15,8 @@ test('les cinq niveaux et tous les identifiants importés sont présents', () =>
 });
 
 test('les ordres vides et ex aequo restent stables', () => {
-  const nodes = [{ id: 'a' }, { id: 'b', order: 2 }, { id: 'c', order: 1 }, { id: 'd', order: 2 }, { id: 'e', order: null }];
-  assert.deepEqual(orderedNodes(nodes).map(n => n.id), ['c', 'b', 'd', 'a', 'e']);
+  const nodes = [{ id: 'a' }, { id: 'b', order: 2 }, { id: 'c', order: 1 }, { id: 'd', order: 2 }, { id: 'e', order: null }, { id: 'f', order: '' }];
+  assert.deepEqual(orderedNodes(nodes).map(n => n.id), ['c', 'b', 'd', 'a', 'e', 'f']);
 });
 
 test('la réponse à Ça va choisit le bon ordre et les bonnes sous-catégories', () => {

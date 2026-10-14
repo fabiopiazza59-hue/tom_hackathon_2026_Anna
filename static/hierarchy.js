@@ -5,7 +5,7 @@ export function entries(bank) {
   const result = [];
   function walk(node, parent, path) {
     result.push({ node, parent, path });
-    for (const child of node.children || []) walk(child, node, [...path, node]);
+    for (const child of orderedNodes(node.children || [])) walk(child, node, [...path, node]);
   }
   walk(bank.root, null, []);
   return result;
@@ -14,9 +14,10 @@ export const findEntry = (bank, id) => entries(bank).find(e => e.node.id === id)
 
 // Les ordres renseignés priment ; les autres restent dans leur ordre d’import.
 export function orderedNodes(nodes, answer) {
+  const number = value => value == null || String(value).trim() === '' || !Number.isFinite(Number(value)) ? null : Number(value);
   const order = node => (node.level === 'category' && answer
-    ? node[answer === 'oui' ? 'orderYes' : 'orderNo'] ?? node.order
-    : node.order) ?? Infinity;
+    ? number(node[answer === 'oui' ? 'orderYes' : 'orderNo']) ?? number(node.order)
+    : number(node.order)) ?? Infinity;
   return nodes.map((node, index) => ({ node, index })).sort((a, b) => order(a.node) - order(b.node) || a.index - b.index).map(x => x.node);
 }
 
