@@ -2,6 +2,12 @@
 
 A Python / FastAPI starter for person-led conversations with people with disabilities. Six optional questions, keyboard-friendly navigation, larger text, high contrast, offline browser speech when available, pause/resume, and a downloadable summary.
 
+## Open Anna
+
+Scan the QR code or visit [Anna's public page](https://tom-hackathon-2026-anna.vercel.app/).
+
+[![QR code linking to Anna's public page](docs/anna-qr-code.png)](https://tom-hackathon-2026-anna.vercel.app/)
+
 ## Run locally
 
 Install [uv](https://docs.astral.sh/uv/), then:
