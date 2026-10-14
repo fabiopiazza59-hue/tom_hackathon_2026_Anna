@@ -1,31 +1,73 @@
 <!doctype html>
 <html lang="fr">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f7f7f0">
-  <meta name="description" content="Un espace pour échanger avec Anna, à son rythme, une question à la fois.">
-  <title>Anna · Une conversation à son rythme</title>
-  <link rel="stylesheet" href="/static/style.css">
-  <script src="/static/app.js" defer></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0F5E63">
+<meta name="robots" content="noindex">
+<title>Parler avec Anna</title>
+<link rel="manifest" href="/static/manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<a class="skip-link" href="#main">Aller au contenu principal</a>
-<header><a class="brand" href="/" aria-label="Accueil Anna"><span class="brand-mark" aria-hidden="true">a</span> anna<span class="brand-dot">.</span></a><div class="tools"><button id="text-size" aria-pressed="false" aria-label="Agrandir le texte">Aa <span>Texte agrandi</span></button><button id="contrast" aria-pressed="false"><span aria-hidden="true">◐</span> Contraste élevé</button></div></header>
-<main id="main">
-  <section id="welcome" class="welcome">
-    <div class="intro">
-      <h1>Avec Anna.</h1>
-      <button class="primary" id="start">Poser la première question <span aria-hidden="true">↗</span></button>
-      <div class="instructions"><h2>Avant de commencer</h2><ol><li>Se positionner bien en face d’Anna.</li><li>S’assurer que son regard est bien stabilisé en face.</li><li>Poser la première question.</li></ol></div>
-      <a class="qr-link" href="/static/anna-qr-code.png" target="_blank" rel="noopener">Voir le QR code <span aria-hidden="true">↗</span></a>
-    </div>
-    <figure class="anna-portrait"><img src="/static/anna.jpeg" alt="Anna souriante, installée dans son fauteuil." width="1200" height="1600" fetchpriority="high"></figure>
-  </section>
-  <section id="conversation" class="conversation" hidden aria-labelledby="question-title"><div class="session-top"><span class="eyebrow">LE QUOTIDIEN D’ANNA, AVEC SES MOTS</span><button id="pause">Faire une pause</button></div><div class="progress-label"><span id="step-label"></span><span>Prenez le temps nécessaire.</span></div><progress id="progress" max="6" value="1" aria-label="Progression des questions"></progress><div class="question-card"><span id="category" class="eyebrow"></span><h1 id="question-title" tabindex="-1"></h1><p id="hint" class="hint"></p><button id="read" class="read-button">Écouter la question <span aria-hidden="true">◖))</span></button><label for="answer">Réponse <span>(facultative)</span></label><textarea id="answer" rows="5" placeholder="Notez ce qu’Anna souhaite partager…" aria-describedby="hint"></textarea><div class="question-actions"><button id="back">Retour</button><div><button id="skip">Passer la question</button><button id="next" class="primary">Continuer <span aria-hidden="true">→</span></button></div></div></div><p class="session-note">Il n’est pas nécessaire de communiquer un diagnostic ou des informations personnelles.</p></section>
-  <section id="break" class="break-screen" hidden><div class="eyebrow">UN MOMENT DE PAUSE</div><h1 tabindex="-1">Prenez votre temps.</h1><p>Les réponses sont toujours dans cet onglet. Reprenez lorsque vous le souhaitez.</p><button id="resume" class="primary">Reprendre la conversation →</button></section>
-  <section id="summary" class="summary" hidden><div class="eyebrow">MERCI POUR CET ÉCHANGE</div><h1 tabindex="-1">Chaque expérience compte.</h1><p class="lede">Voici les réponses partagées. Vous pouvez les modifier ou en conserver une copie.</p><div id="answers"></div><div class="summary-actions"><button id="edit">Revoir les réponses</button><button id="download" class="primary">Télécharger les réponses ↓</button><button id="restart">Effacer les réponses et recommencer</button></div><p class="small">Aucune réponse n’a été envoyée ni enregistrée sur un serveur.</p></section>
-  <noscript><p class="noscript">Veuillez activer JavaScript pour utiliser la conversation. Aucune réponse n’est envoyée à un serveur.</p></noscript>
-</main>
-<footer><span class="footer-brand">anna.</span><span>TOM Hackathon 2026</span></footer>
-<div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
-</body></html>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-douleur" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></symbol>
+  <symbol id="i-soif" viewBox="0 0 24 24"><path d="M5 8h12v6a5 5 0 0 1-5 5h-2a5 5 0 0 1-5-5V8z"/><path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17M8 2.5v3M12 2.5v3"/></symbol>
+  <symbol id="i-hygiene" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/><path d="M9.5 14.5a2.5 2.5 0 0 0 2.5 2.5"/></symbol>
+  <symbol id="i-position" viewBox="0 0 24 24"><path d="M3 18V6M3 14h18v4M21 14v-1a3 3 0 0 0-3-3h-7v4"/><circle cx="7" cy="11" r="2"/></symbol>
+  <symbol id="i-temp" viewBox="0 0 24 24"><path d="M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z"/><path d="M12 9v7"/></symbol>
+  <symbol id="i-emotions" viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></symbol>
+  <symbol id="i-journee" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+  <symbol id="i-passerelle" viewBox="0 0 24 24"><path d="M4 21V6l8-3 8 3v15M2 21h20M10 21v-5h4v5M8 9h2M14 9h2M8 13h2M14 13h2"/></symbol>
+  <symbol id="i-personnes" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20a6 6 0 0 1 12 0"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.2A5 5 0 0 1 21 19"/></symbol>
+  <symbol id="i-proches" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7M5 10v10h14V10"/><path d="M12 18s-3.5-2-3.5-4.5a1.75 1.75 0 0 1 3.5-.6 1.75 1.75 0 0 1 3.5.6C15.5 16 12 18 12 18z"/></symbol>
+  <symbol id="i-activites" viewBox="0 0 24 24"><circle cx="8" cy="17" r="3"/><path d="M11 17V5l9-2v12"/><circle cx="17" cy="15" r="3"/></symbol>
+  <symbol id="i-autre" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4V5z"/><path d="M8 9h8M8 12h5"/></symbol>
+  <symbol id="i-intime" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-interaction" viewBox="0 0 24 24"><path d="M3 4h12v8H8l-5 3.5V4z"/><path d="M18 8h3v11.5L17 17h-6v-2"/></symbol>
+  <symbol id="i-dire" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><path d="M3 7h4l2-2h6l2 2h4v12H3z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 11 12 4l9 7M5 10v10h14V10"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M10 6 4 12l6 6M4 12h16"/></symbol>
+  <symbol id="i-voice" viewBox="0 0 24 24"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7"/></symbol>
+  <symbol id="i-yes" viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7"/></symbol>
+  <symbol id="i-no" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-talk" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4V5z"/><circle cx="9" cy="10.5" r=".6"/><circle cx="12" cy="10.5" r=".6"/><circle cx="15" cy="10.5" r=".6"/></symbol>
+  <symbol id="i-scan" viewBox="0 0 24 24"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></symbol>
+  <symbol id="i-spell" viewBox="0 0 24 24"><path d="M4 19 8.5 6h1L14 19M6 14.5h6M15 19l2.5-7h1L21 19"/></symbol>
+  <symbol id="i-plan" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></symbol>
+  <symbol id="i-deeper" viewBox="0 0 24 24"><path d="M5 12h12M13 7l5 5-5 5"/></symbol>
+  <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4 4 0 0 1-.6-7.96A6 6 0 0 1 18 9a4.5 4.5 0 0 1-.5 9H7z"/><path d="M4 4l16 16"/></symbol>
+</svg>
+
+<div class="app" id="app">
+  <header class="top" id="top"></header>
+  <main class="main" id="main"><p class="muted" style="padding:24px 0">Chargement…</p></main>
+  <footer class="bar" id="bar" hidden>
+    <button class="ans no" id="bNo" type="button" aria-label="Non"><svg class="i"><use href="#i-no"/></svg>NON</button>
+    <button class="ans talk" id="bTalk" type="button" aria-label="Je veux parler"><svg class="i"><use href="#i-talk"/></svg><span class="long">Je veux parler</span><span class="short">Parler</span></button>
+    <button class="ans yes" id="bYes" type="button" aria-label="Oui"><svg class="i"><use href="#i-yes"/></svg>OUI</button>
+  </footer>
+</div>
+
+<div class="cam" id="cam" hidden>
+  <video id="vid" playsinline muted></video>
+  <div class="st">
+    <div id="camMsg" class="muted">Démarrage…</div>
+    <div class="meter">oui<i><b id="mP"></b></i></div>
+    <div class="meter">non<i><b id="mY"></b></i></div>
+    <div class="meter">parler<i><b id="mR"></b></i></div>
+    <div id="camLast" style="font-weight:700"></div>
+    <button class="btn sm" id="recal" type="button">Recalibrer</button>
+  </div>
+</div>
+<div id="ovRoot"></div>
+
+<script type="module" src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{
+  "name": "anna-interface",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/local-data.test.mjs",
+    "check": "node --check static/app.js && node --check static/local-data.js && node --check static/head-tracking.js"
+  }
+}

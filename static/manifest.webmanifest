@@ -1,0 +1,10 @@
+{
+  "name": "Parler avec Anna",
+  "short_name": "Anna",
+  "lang": "fr",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#EEF2F1",
+  "theme_color": "#0F5E63"
+}

@@ -2,8 +2,8 @@ from pathlib import Path
 import os
 import secrets
 
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 
@@ -11,6 +11,16 @@ ROOT = Path(__file__).parent
 app = FastAPI(title="Anna", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 security = HTTPBasic(realm="Anna admin")
+
+
+@app.middleware("http")
+async def response_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["Permissions-Policy"] = "camera=(self), microphone=()"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
 
 
 def require_admin(credentials: HTTPBasicCredentials = Depends(security)):
@@ -35,6 +45,11 @@ def admin():
         ROOT / "private" / "admin.html",
         headers={"Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow"},
     )
+
+
+@app.get("/api/admin-session", dependencies=[Depends(require_admin)])
+def admin_session():
+    return JSONResponse({"isAdmin": True}, headers={"Cache-Control": "private, no-store"})
 
 
 @app.get("/")
