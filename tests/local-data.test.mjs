@@ -2,10 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createLocalApi } from '../static/local-data.js';
 import { findEntry } from '../static/hierarchy.js';
+import { startHierarchy, answerHierarchy } from '../static/hierarchy.js';
 
 function setup(admin = true) {
   const values = new Map();
-  const storage = { getItem: k => values.get(k) ?? null, setItem: (k, v) => values.set(k, v) };
+  const storage = { getItem: k => values.get(k) ?? null, setItem: (k, v) => values.set(k, v), removeItem: k => values.delete(k) };
   const api = createLocalApi({ storage, authorize: async () => admin });
   return { api, storage };
 }
@@ -21,6 +22,8 @@ test('la banque initiale contient la hiérarchie CSV complète', async () => {
   assert.equal(data.themes.length, 27);
   assert.equal(data.bank.root.q, 'Ça va ?');
   assert.ok(data.themes.find(t => t.id === 'subcat:boire').items.length > 0);
+  assert.ok(!Object.hasOwn(data, 'history'));
+  assert.ok(!Object.hasOwn(data, 'stats'));
 });
 
 test('les modifications admin persistent et les sous-questions sont supprimées ensemble', async () => {
@@ -39,12 +42,14 @@ test('les actions admin exigent une authentification', async () => {
   await assert.rejects(edit(api, 'save-plan', { plan: 'secret' }), { status: 403 });
 });
 
-test('les échanges publics sont dédupliqués', async () => {
-  const { api } = setup();
-  const conversation = { id: 'test', theme: 'subcat:boire', path: ['Boire', 'Eau'], result: 'resolu', at: Date.now() };
-  assert.equal((await api('POST', '/api/data?action=conversation', conversation)).saved, 1);
-  assert.equal((await api('POST', '/api/data?action=conversation', conversation)).saved, 0);
-  assert.equal((await bootstrap(api)).history.length, 1);
+test('les anciens points d’enregistrement des interactions sont refusés', async () => {
+  const { api, storage } = setup(false);
+  await bootstrap(api);
+  const before = storage.getItem('anna-local-data-v1');
+  for (const action of ['events', 'conversation', 'note']) {
+    await assert.rejects(api('POST', '/api/data?action=' + action, { answer: 'donnée sensible' }), { status: 404 });
+  }
+  assert.equal(storage.getItem('anna-local-data-v1'), before);
 });
 
 test('les réglages et les personnes sont conservés entre les lectures', async () => {
@@ -69,16 +74,45 @@ test('les modifications de texte et d’ordre se retrouvent dans la banque publi
   assert.equal(findEntry(data.bank, node.id).node.csv.id, 'mal_dos');
 });
 
-test('la migration sauvegarde la banque précédente et conserve l’historique', async () => {
+test('la migration sauvegarde la banque précédente sans ses interactions', async () => {
   const { api, storage } = setup();
   const old = { patient: { display_name: 'Anna', daily_plan: 'Atelier', settings: { sens: 1.2 } }, types: [{ id: 'ancien' }], themes: [], questions: [{ id: 'édition locale' }], followups: [], people: [], events: [], conversations: [], notes: [] };
   storage.setItem('anna-local-data-v1', JSON.stringify(old));
   const data = await bootstrap(api);
-  assert.deepEqual(JSON.parse(storage.getItem('anna-before-csv-v1')), old);
+  const expected = { ...old };
+  for (const key of ['events', 'conversations', 'notes']) delete expected[key];
+  assert.deepEqual(JSON.parse(storage.getItem('anna-before-csv-v1')), expected);
   assert.equal(data.plan, 'Atelier');
   assert.equal(data.types.length, 6);
   await edit(api, 'save-node', { id: 'master', q: 'Comment ça va ?', label: 'Départ' });
   assert.equal((await bootstrap(api)).bank.root.q, 'Comment ça va ?');
+});
+
+test('le nettoyage supprime les traces et la file d’attente sans toucher à la banque éditée', async () => {
+  const { api, storage } = setup();
+  await bootstrap(api);
+  const db = JSON.parse(storage.getItem('anna-local-data-v1'));
+  db.bank.root.q = 'Question personnalisée ?';
+  for (const key of ['events', 'conversations', 'notes', 'history', 'stats', 'answers', 'interactions', 'outbox']) db[key] = ['trace sensible'];
+  storage.setItem('anna-local-data-v1', JSON.stringify(db));
+  storage.setItem('anna-before-csv-v1', JSON.stringify({ questions: [{ text: 'Question à conserver' }], history: ['trace sensible'], stats: { count: 10 }, conversations: ['trace sensible'] }));
+  storage.setItem('anna-outbox', JSON.stringify(['trace sensible']));
+  const data = await bootstrap(api);
+  assert.equal(data.bank.root.q, 'Question personnalisée ?');
+  assert.ok(!storage.getItem('anna-local-data-v1').includes('trace sensible'));
+  assert.deepEqual(JSON.parse(storage.getItem('anna-before-csv-v1')), { questions: [{ text: 'Question à conserver' }] });
+  assert.equal(storage.getItem('anna-outbox'), null);
+});
+
+test('un parcours Oui/Non complet ne modifie pas le stockage persistant', async () => {
+  const { api, storage } = setup(false);
+  const { bank } = await bootstrap(api);
+  const before = storage.getItem('anna-local-data-v1');
+  let state = startHierarchy(bank);
+  for (const answer of ['non', 'oui', 'oui', 'non', 'oui']) state = answerHierarchy(bank, state, answer);
+  assert.equal(state.done, true);
+  assert.equal(state.result.text, "J'ai mal au ventre.");
+  assert.equal(storage.getItem('anna-local-data-v1'), before);
 });
 
 test('les parents et les ordres invalides sont refusés sans modifier la banque', async () => {

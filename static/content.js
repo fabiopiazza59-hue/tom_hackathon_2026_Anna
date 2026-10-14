@@ -30,7 +30,7 @@ export function flattenDefaults(types, themes) {
 }
 
 /** Construit la charge utile du front à partir des lignes lues en base. */
-export function buildBootstrap({ patient, types, themes, questions, followups, people, stats, history, isAdmin }) {
+export function buildBootstrap({ patient, types, themes, questions, followups, people, isAdmin }) {
   const byParent = new Map();
   for (const q of questions) {
     const k = q.parent_id || '§' + q.theme_id;
@@ -53,9 +53,6 @@ export function buildBootstrap({ patient, types, themes, questions, followups, p
     if (!deeperBy.has(f.theme_id)) deeperBy.set(f.theme_id, []);
     deeperBy.get(f.theme_id).push({ id: String(f.id), text: f.text });
   }
-  const statMap = {};
-  for (const s of stats) statMap[s.question_key] = { a: +s.asked, y: +s.yes, n: +s.no, p: +s.talk, rt: +s.rt_sum };
-
   return {
     patientName: patient.display_name,
     plan: patient.daily_plan || '',
@@ -70,10 +67,5 @@ export function buildBootstrap({ patient, types, themes, questions, followups, p
       deeper: deeperBy.get(t.id) || [],
     })),
     people: people.map(p => ({ id: p.id, name: p.name, role: p.role, kind: p.kind })),
-    stats: statMap,
-    history: history.map(h => ({
-      id: h.id, ts: new Date(h.created_at).getTime(), theme: h.theme_id, path: h.path, result: h.result,
-      n: h.questions_count, dur: h.duration_ms, urgent: h.is_urgent, notes: h.notes || [],
-    })),
   };
 }

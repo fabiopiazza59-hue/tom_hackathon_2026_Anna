@@ -1,9 +1,40 @@
-// La banque, les réglages et l’historique restent sur cet appareil.
+// Adaptateur de la banque. En production, le stockage injecté est en mémoire.
 import { buildBootstrap, slug, PEOPLE_KINDS } from './content.js';
 import { QUESTION_BANK } from './question-bank.js';
 import { bankRows, findEntry, LEVELS } from './hierarchy.js';
 
 const KEY = 'anna-local-data-v1';
+const BACKUP = 'anna-before-csv-v1';
+const INTERACTION_FIELDS = ['events', 'conversations', 'notes', 'history', 'stats', 'answers', 'interactions', 'answer_events', 'conversation_notes', 'outbox'];
+const withoutInteractions = value => {
+  const clean = { ...value };
+  for (const field of INTERACTION_FIELDS) delete clean[field];
+  return clean;
+};
+
+// Nettoyer les anciennes traces et proposer la banque locale pour un import unique.
+export function legacyConfig(storage) {
+  let db = null;
+  try {
+    storage.removeItem('anna-outbox');
+    for (const key of [KEY, BACKUP]) {
+      const raw = storage.getItem(key);
+      if (!raw) continue;
+      const clean = withoutInteractions(JSON.parse(raw));
+      storage.setItem(key, JSON.stringify(clean));
+      if (key === KEY) db = clean;
+    }
+  } catch { return null; }
+  if (!db?.bank) return null;
+  return {
+    bank: db.bank,
+    patient: {
+      display_name: db.patient?.display_name || 'Anna', daily_plan: db.patient?.daily_plan || '',
+      settings: { sens: db.patient?.settings?.sens || 1, context: db.patient?.settings?.context || 'tous', reco: false },
+    },
+    people: db.people || [],
+  };
+}
 const fail = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
 const text = (value, max, optional = false) => {
   if (typeof value !== 'string' || value.length > max || (!optional && !value.trim())) fail('Texte invalide');
@@ -13,18 +44,29 @@ const text = (value, max, optional = false) => {
 export function createLocalApi({ storage, authorize }) {
   function load() {
     let raw;
-    try { raw = storage.getItem(KEY); } catch { fail('Le stockage local est indisponible. Autorisez-le pour conserver les échanges.'); }
+    try {
+      if (storage.getItem('anna-outbox') != null) storage.removeItem('anna-outbox');
+      const backup = storage.getItem(BACKUP);
+      if (backup) {
+        const clean = JSON.stringify(withoutInteractions(JSON.parse(backup)));
+        if (clean !== backup) storage.setItem(BACKUP, clean);
+      }
+      raw = storage.getItem(KEY);
+    } catch { fail('Le nettoyage des anciennes interactions est impossible. Vérifiez l’accès au stockage du navigateur.'); }
     let db;
     if (raw) {
       try { db = JSON.parse(raw); } catch { fail('Les données locales sont illisibles. Contactez l’équipe avant de les effacer.'); }
+      const clean = withoutInteractions(db);
+      if (JSON.stringify(clean) !== raw) save(clean);
+      db = clean;
       if (db.bank) return db;
       // Garder la banque précédente et toutes ses modifications avant la migration.
-      try { if (!storage.getItem('anna-before-csv-v1')) storage.setItem('anna-before-csv-v1', raw); }
+      try { if (!storage.getItem(BACKUP)) storage.setItem(BACKUP, JSON.stringify(db)); }
       catch { fail('Sauvegarde de l’ancienne banque impossible. L’import a été interrompu.'); }
     }
     db = {
       patient: { display_name: 'Anna', daily_plan: '', settings: { sens: 1, context: 'tous', reco: false } },
-      people: [], events: [], conversations: [], notes: [], ...db,
+      people: [], ...db,
       bank: structuredClone(QUESTION_BANK),
     };
     db.patient.settings = { ...db.patient.settings, reco: false, context: db.patient.settings?.context || 'tous' };
@@ -33,11 +75,9 @@ export function createLocalApi({ storage, authorize }) {
     return db;
   }
   function save(db) {
-    try { storage.setItem(KEY, JSON.stringify(db)); }
+    try { storage.setItem(KEY, JSON.stringify(withoutInteractions(db))); }
     catch { fail('Enregistrement impossible : le stockage de cet appareil est plein ou bloqué.'); }
   }
-  const isPrivate = (db, id) => { const entry = findEntry(db.bank, id); return !!entry && [entry.node, ...entry.path].some(n => n.private); };
-  const privateTheme = isPrivate, privateQuestion = isPrivate;
   const suffix = () => crypto.randomUUID().slice(0, 8);
 
   return async function localApi(method, path, body = {}) {
@@ -45,44 +85,10 @@ export function createLocalApi({ storage, authorize }) {
     const area = url.pathname.split('/').pop(), action = url.searchParams.get('action');
     const db = load();
     if (area === 'data' && method === 'GET' && action === 'bootstrap') {
-      const stats = new Map();
-      for (const e of db.events.filter(e => e.at > Date.now() - 180 * 864e5)) {
-        const s = stats.get(e.key) || { question_key: e.key, asked: 0, yes: 0, no: 0, talk: 0, rt_sum: 0 };
-        if (e.answer === 'parler') s.talk++;
-        else { s.asked++; s[e.answer === 'oui' ? 'yes' : 'no']++; s.rt_sum += e.ms; }
-        stats.set(e.key, s);
-      }
       return { bank: structuredClone(db.bank), ...buildBootstrap({
-        ...db, ...bankRows(db.bank), patient: { ...db.patient, admin_pin_hash: 'server-managed' }, stats: [...stats.values()],
-        history: db.conversations.filter(c => new Date(c.created_at).getTime() > Date.now() - 60 * 864e5)
-          .map(c => ({ ...c, notes: db.notes.filter(n => n.cid === c.id).map(n => [n.question, n.answer]) })).reverse(),
+        ...db, ...bankRows(db.bank), patient: { ...db.patient, admin_pin_hash: 'server-managed' },
         isAdmin: await authorize(false),
       }) };
-    }
-    if (area === 'data' && method === 'POST') {
-      if (action === 'events') {
-        const events = (Array.isArray(body.events) ? body.events : []).filter(e =>
-          typeof e.key === 'string' && typeof e.theme === 'string' && ['oui', 'non', 'parler'].includes(e.answer)
-          && !privateTheme(db, e.theme) && !privateQuestion(db, e.key)
-        ).map(e => ({ ...e, ms: Math.max(0, Math.min(600000, Number(e.ms) || 0)), at: Number(e.at) || Date.now() }));
-        db.events.push(...events);
-        db.events = db.events.filter(e => e.at > Date.now() - 180 * 864e5);
-        save(db); return { saved: events.length };
-      }
-      if (action === 'conversation') {
-        if (privateTheme(db, body.theme) || db.conversations.some(c => c.id === body.id)) return { saved: 0 };
-        db.conversations.push({ id: body.id, theme_id: body.theme, path: body.path, result: body.result,
-          questions_count: body.n, duration_ms: body.dur, is_urgent: !!body.urgent, created_at: new Date(body.at || Date.now()).toISOString() });
-        db.conversations = db.conversations.filter(c => new Date(c.created_at).getTime() > Date.now() - 60 * 864e5);
-        const ids = new Set(db.conversations.map(c => c.id));
-        db.notes = db.notes.filter(n => ids.has(n.cid));
-        save(db); return { saved: 1 };
-      }
-      if (action === 'note') {
-        if (!db.conversations.some(c => c.id === body.conversationId)) return { saved: 0 };
-        db.notes.push({ cid: body.conversationId, question: body.question, answer: body.answer });
-        save(db); return { saved: 1 };
-      }
     }
     if (area !== 'admin' || method !== 'POST') fail('Action inconnue', 404);
     if (!await authorize(true)) fail('Connexion admin requise', 403);

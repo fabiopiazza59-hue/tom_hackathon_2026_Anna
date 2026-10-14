@@ -35,7 +35,6 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:1.8;stroke
 .ib.nav-b{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .ib .lb{display:none}
 @media (min-width:720px){.ib .lb{display:inline}}
-.sync{font-size:12px;color:var(--talk);display:inline-flex;gap:4px;align-items:center;white-space:nowrap}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel);font-size:15px}
 .btn:hover{border-color:var(--accent)}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
@@ -148,17 +147,11 @@ svg.i{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:1.8;stroke
 
 /* espace soignant */
 .adm{max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
-.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;border-radius:14px;background:var(--panel-2);position:sticky;top:0;z-index:2}
+.seg{display:grid;grid-template-columns:repeat(2,1fr);gap:4px;padding:4px;border-radius:14px;background:var(--panel-2);position:sticky;top:0;z-index:2}
 .seg button{padding:10px 6px;border:none;border-radius:10px;background:transparent;font-size:15px;color:var(--muted);font-weight:700}
 .seg button.cur{background:var(--panel);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0}
 .card h3{margin:0 0 10px;font-size:17px}
-.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-@media (min-width:640px){.stats{grid-template-columns:repeat(4,1fr)}}
-.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px}
-.stat .n{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;display:block}
-.stat .l{font-size:13px;color:var(--muted)}
-.stat.warn{border-color:var(--urgent)}.stat.warn .n{color:var(--urgent)}
 .rows{list-style:none;margin:0;padding:0}
 .rows li{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
 .rows li:first-child{border-top:none}

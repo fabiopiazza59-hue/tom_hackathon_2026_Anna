@@ -1,5 +1,5 @@
 import { createHeadTracker } from './head-tracking.js';
-import { createLocalApi } from './local-data.js';
+import { createSharedApi } from './shared-data.js';
 import { startHierarchy, answerHierarchy, availableChildren, LEVEL_NAMES, LEVELS } from './hierarchy.js';
 import { createBankEditor } from './bank-editor.js';
 
@@ -24,16 +24,17 @@ const PERSON_FOLLOW = [
 const KINDS = ['Famille', 'Amis', 'Équipe', 'Rencontres'];
 const GROUPS = [['E', 'S', 'A', 'I', 'N', 'T', 'R', 'U', 'L'], ['O', 'D', 'C', 'M', 'P', 'G', 'B', 'V', 'H'], ['F', 'Q', 'J', 'X', 'Y', 'Z', 'K', 'W', '’'], ['ESPACE', 'EFFACER', 'TERMINER', 'ANNULER']];
 
-/* ================================================================ stockage local (préférences + file d'attente) */
+/* ================================================================ stockage local des préférences */
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* stockage indisponible */ } },
 };
-const K_OUTBOX = 'anna-outbox', K_VOICE = 'anna-voice';
+const K_VOICE = 'anna-voice';
 
 // L’admin conserve la protection HTTP Basic du serveur Python.
-const api = createLocalApi({
+const api = createSharedApi({
   storage: localStorage,
+  admin: adminPage,
   authorize: async required => {
     if (!adminPage) return false;
     const response = await fetch('/api/admin-session', { credentials: 'same-origin', cache: 'no-store' });
@@ -45,36 +46,8 @@ const api = createLocalApi({
   },
 });
 
-// File locale : une écriture est retirée uniquement après son enregistrement dans le navigateur.
-let outbox = store.get(K_OUTBOX, []), flushing = false;
-function enqueue(action, payload) {
-  const last = outbox[outbox.length - 1];
-  if (action === 'events' && last?.action === 'events' && last.payload.events.length < 100) last.payload.events.push(...payload.events);
-  else outbox.push({ action, payload });
-  store.set(K_OUTBOX, outbox);
-  flush();
-}
-async function flush() {
-  if (flushing || !outbox.length) return;
-  flushing = true;
-  try {
-    while (outbox.length) {
-      try { await api('POST', '/api/data?action=' + outbox[0].action, outbox[0].payload); }
-      catch (e) {
-        // Erreur définitive (donnée refusée) : on l'écarte. Sinon (réseau, serveur) : on réessaiera.
-        const permanent = e.status >= 400 && e.status < 500 && ![401, 408, 429].includes(e.status);
-        if (!permanent) break;
-      }
-      outbox.shift();
-      store.set(K_OUTBOX, outbox);
-    }
-  } finally { flushing = false; renderSync(); }
-}
-setInterval(flush, 15000);
-addEventListener('online', flush);
-
 /* ================================================================ état */
-let S = null;          // données de la personne (banque, personnes, historique, stats)
+let S = null;          // données de la personne (banque, personnes et réglages)
 let F = { mode: 'home' }, undo = [], view = adminPage ? 'admin' : 'patient', cat = '__rapide';
 let voice = store.get(K_VOICE, false);
 
@@ -91,12 +64,6 @@ const hue = s => [...String(s)].reduce((a, c) => a + c.charCodeAt(0) * 7, 0) % 3
 const typeOf = id => S.types.find(t => t.id === id) || { id, name: id, short: id, icon: 'autre', h: hue(id) };
 const iconFor = t => document.getElementById('i-' + t.icon) ? t.icon : 'autre';
 const fmtT = ts => new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-const fmtD = ts => {
-  const d = new Date(ts), t = new Date(), y = new Date(); y.setDate(t.getDate() - 1);
-  if (d.toDateString() === t.toDateString()) return 'Auj.';
-  if (d.toDateString() === y.toDateString()) return 'Hier';
-  return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
-};
 const avatar = p => `<span class="av" style="background:hsl(${hue(p.name)} 38% 42%)">${esc(p.name.replace(/^Dr\.? /, '').slice(0, 1))}</span>`;
 const name = () => S?.patientName || 'Anna';
 function personTheme(p) { return (S.themes.find(t => t.dynamic && t.peopleKinds.includes(p.kind)) || S.themes.find(t => t.dynamic))?.id; }
@@ -124,24 +91,8 @@ function chime() {
   } catch { /* son indisponible */ }
 }
 
-/* ================================================================ moteur de recommandation */
-function st(id) { return S.stats[id] || (S.stats[id] = { a: 0, y: 0, n: 0, p: 0, rt: 0 }); }
-// Score = 50 % taux de « oui » (la question trouve le besoin) + 30 % usage + 20 % rapidité de réponse.
-function scoreOf(id) {
-  const x = S.stats[id];
-  if (!x || !x.a) return { score: 0.3, hit: 0, a: 0, avg: 0 };
-  const maxA = Math.max(1, ...Object.values(S.stats).map(v => v.a));
-  const hit = (x.y + 1) / (x.a + 2), use = x.a / maxA, avg = x.rt / x.a, speed = Math.max(0, Math.min(1, 1 - avg / 8000));
-  return { score: 0.5 * hit + 0.3 * use + 0.2 * speed, hit, a: x.a, avg };
-}
-function ordered(list) {
-  if (S.bank) return list;
-  if (!S.settings.reco || !Array.isArray(list)) return list;
-  return list.map((it, i) => ({ it, i, s: scoreOf(it.id).score }))
-    .sort((a, b) => (b.it.urgent ? 1 : 0) - (a.it.urgent ? 1 : 0) || (a.it.action === 'spell') - (b.it.action === 'spell') || b.s - a.s || a.i - b.i)
-    .map(o => o.it);
-}
-const peopleOf = t => S.people.filter(p => personTheme(p) === t.id);
+const ordered = list => list;
+const peopleOf = t => S.people.filter(p => t.peopleKinds.includes(p.kind));
 function themeItems(t) {
   if (!t.dynamic) return ordered(t.items);
   const ppl = peopleOf(t).map(p => ({
@@ -150,17 +101,6 @@ function themeItems(t) {
   }));
   return [...ordered(ppl), ...t.items];
 }
-function suggestions() {
-  if (S.bank) return [];
-  const now = Date.now(), hr = new Date().getHours(), map = new Map();
-  S.history.filter(e => e.result === 'resolu' && e.path.length > 1 && theme(e.theme)).forEach(e => {
-    const k = e.theme + '|' + e.path.join('|'), dh = Math.abs(new Date(e.ts).getHours() - hr);
-    const w = (Math.min(dh, 24 - dh) <= 2 ? 2 : 1) * Math.exp(-(now - e.ts) / (7 * 864e5));
-    const m = map.get(k) || { theme: e.theme, path: e.path, w: 0 }; m.w += w; map.set(k, m);
-  });
-  return [...map.values()].sort((a, b) => b.w - a.w).slice(0, 5);
-}
-
 /* ================================================================ déroulé des questions */
 const cur = () => { const top = F.stack[F.stack.length - 1]; return top.list[top.idx]; };
 function goHome() { F = { mode: 'home' }; undo = []; render(); }
@@ -169,31 +109,19 @@ function startTheme(id, pre) {
   const t = theme(id); if (!t) return;
   const list = themeItems(t);
   if (!list.length) { toast(`« ${t.label} » n’a pas encore de questions : ajoute-les dans l’espace admin.`); return goHome(); }
-  F = { mode: 'q', theme: id, stack: [{ list, idx: 0 }], path: [t.label], asked: [], t0: Date.now(), priv: !!t.private, urgent: false };
+  F = { mode: 'q', theme: id, stack: [{ list, idx: 0 }], path: [t.label], priv: !!t.private, urgent: false };
   undo = [];
   if (pre) { const it = F.stack[0].list.find(x => x.id === pre); if (it) { F.path.push(it.l); F.stack.push({ list: ordered(it.then), idx: 0 }); } }
   showQ();
 }
 function startScan() {
   if (S.bank) return startBank();
-  const list = S.themes.filter(t => themeItems(t).length).map(t => ({ t, u: S.history.filter(e => e.theme === t.id).length })).sort((a, b) => b.u - a.u)
-    .map(({ t }) => ({ id: 'scan.' + t.id, l: t.label, q: `C’est à propos de : ${t.label} ?`, goto: t.id }));
-  F = { mode: 'q', theme: 'scan', stack: [{ list, idx: 0 }], path: ['Choix du thème'], asked: [], t0: Date.now(), priv: false };
-  undo = []; showQ();
-}
-function quickQ(sg) {
-  const t = theme(sg.theme), first = t?.items.find(x => x.l === sg.path[1]), rest = sg.path.slice(2).join(', ').toLowerCase();
-  if (first?.ask) return first.q;
-  if (first) return rest ? first.q.replace(/\s*\?$/, '') + ' : ' + rest + ' ?' : first.q;
-  return 'Encore : ' + sg.path.slice(1).join(', ').toLowerCase() + ' ?';
-}
-function startQuick(sg) {
-  if (S.bank) return startBank(sg.theme);
-  F = { mode: 'q', theme: sg.theme, stack: [{ list: [{ id: 'quick', l: sg.path[sg.path.length - 1], q: quickQ(sg) }], idx: 0 }], path: sg.path.slice(0, -1), asked: [], t0: Date.now(), priv: false, quick: true };
+  const list = S.themes.filter(t => themeItems(t).length).map(t => ({ id: 'scan.' + t.id, l: t.label, q: `C’est à propos de : ${t.label} ?`, goto: t.id }));
+  F = { mode: 'q', theme: 'scan', stack: [{ list, idx: 0 }], path: ['Choix du thème'], priv: false };
   undo = []; showQ();
 }
 function showPlan() { F = { mode: 'done', theme: 'journee', path: ['Ma journée', 'Programme du jour'], result: 'resolu', action: 'planning', entryNotes: [], priv: false, quick: true }; render(); speak('Voici le programme de ta journée.'); }
-function showQ() { F.qTs = Date.now(); render(); speak(cur().q); }
+function showQ() { render(); speak(cur().q); }
 
 function answer(a) {
   flash(a);
@@ -206,19 +134,13 @@ function answer(a) {
   if (F.mode === 'spell') return spellAnswer(a);
   if (F.mode === 'deeper') {
     F.entryNotes.push([F.dq, a]);
-    if (F.entry) { F.entry.notes.push([F.dq, a]); enqueue('note', { conversationId: F.entry.id, question: F.dq, answer: a }); }
     F.mode = 'done'; render(); return;
   }
   if (F.mode === 'done' && F.hierarchy) { if (a === 'oui') startBank(); else goHome(); return; }
   if (F.mode === 'done') { if (a === 'oui') { (F.theme === 'scan' || F.theme === 'parler' || F.quick) ? startScan() : startTheme(F.theme); } else goHome(); return; }
   if (F.mode !== 'q') return;
   undo.push(JSON.stringify(F));
-  const it = cur(), rt = Date.now() - F.qTs;
-  if (!F.priv && !it.private && it.id !== 'quick' && !it.id.startsWith('scan.')) {
-    const x = st(it.id); x.a++; x[a === 'oui' ? 'y' : 'n']++; x.rt += rt;
-    enqueue('events', { events: [{ key: it.id, theme: F.theme, answer: a, ms: rt, at: Date.now() }] });
-  }
-  F.asked.push(it.id);
+  const it = cur();
   if (a === 'oui') {
     if (it.goto) return startTheme(it.goto);
     F.path.push(it.l); if (it.private) F.priv = true; if (it.urgent) F.urgent = true;
@@ -234,20 +156,8 @@ function answer(a) {
   }
   showQ();
 }
-function record(entry) {
-  S.history.unshift(entry);
-  enqueue('conversation', { id: entry.id, theme: entry.theme, path: entry.path, result: entry.result, n: entry.n, dur: entry.dur, urgent: entry.urgent, at: entry.ts });
-}
-function newEntry(theme, path, result, extra = {}) {
-  return { id: crypto.randomUUID(), ts: Date.now(), theme, path, result, n: 0, dur: 0, urgent: false, notes: [], ...extra };
-}
 function conclude(result, it) {
   Object.assign(F, { mode: 'done', result, action: it?.action, ask: it?.ask, say: it?.say, entryNotes: [] });
-  F.entry = null;
-  if (!F.priv && F.theme !== 'scan') {
-    F.entry = newEntry(F.theme, F.path.slice(), result, { n: F.asked.length, dur: Date.now() - F.t0, urgent: !!F.urgent });
-    record(F.entry);
-  }
   render();
   if (F.ask) return speak(F.ask, true);
   speak(F.summaryText || ((result === 'non-trouve' ? 'Je n’ai pas trouvé. Tu veux épeler ?' : 'Compris : ' + F.path.slice(1).join(', ') + '.') + ' Autre chose ?'));
@@ -264,25 +174,21 @@ function back() {
 /* Parcours des cinq niveaux de la banque CSV. */
 function startBank(targetId = null) {
   F = { mode: 'hierarchy', hierarchy: startHierarchy(S.bank, { context: S.settings.context, targetId }),
-    theme: 'scan', path: [], asked: [], t0: Date.now(), priv: false };
+    theme: 'scan', path: [], priv: false };
   undo = [];
   render(); speak(F.hierarchy.current.q);
 }
 function answerBank(answer) {
-  const node = F.hierarchy.current;
   undo.push(JSON.stringify(F));
-  const ms = Date.now() - (F.qTs || F.t0);
-  F.asked.push(node.id);
   F.hierarchy = answerHierarchy(S.bank, F.hierarchy, answer);
   const chosen = F.hierarchy.path;
   F.path = chosen.map(n => n.level === 'master' ? `${n.q} ${n.response === 'oui' ? 'Oui' : 'Non'}` : n.label);
   F.theme = chosen.find(n => n.level === 'subcategory')?.id || chosen.find(n => n.level === 'category')?.id || 'scan';
-  enqueue('events', { events: [{ key: node.id, theme: F.theme, answer, ms, at: Date.now() }] });
   if (F.hierarchy.done) {
     F.summaryText = F.hierarchy.result.text;
     return conclude(F.hierarchy.result.found ? 'resolu' : 'non-trouve');
   }
-  F.qTs = Date.now(); render(); speak(F.hierarchy.current.q);
+  render(); speak(F.hierarchy.current.q);
 }
 function renderBankQuestion() {
   const flow = F.hierarchy, node = flow.current, frame = flow.frames.at(-1);
@@ -303,8 +209,6 @@ function spellPick(g, l) {
     if (!F.text.trim()) return goHome();
     const path = [...F.ctx, F.text.trim()], th = F.theme, priv = F.priv, isAsk = th === 'interaction' || th === 'dire';
     F = { mode: 'done', theme: th, path, result: 'message', entryNotes: [], priv, ask: isAsk ? path[path.length - 1] : undefined, say: th === 'dire' };
-    F.entry = priv ? null : newEntry(th, path, 'message');
-    if (F.entry) record(F.entry);
     render(); speak((F.ask ? '' : 'Message : ') + path[path.length - 1], !!F.ask); return;
   } else F.text += v;
   F.g = 0; F.l = null; render(); speak(spellQ());
@@ -318,11 +222,6 @@ function spellAnswer(a) {
 /* « je veux parler » */
 function talk() {
   chime(); speak(`${name()} veut parler`);
-  if (F.mode === 'q' && !F.priv && cur().id !== 'quick' && !cur().id.startsWith('scan.')) {
-    st(cur().id).p++;
-    enqueue('events', { events: [{ key: cur().id, theme: F.theme, answer: 'parler', ms: Date.now() - F.qTs, at: Date.now() }] });
-  }
-  if (!F.priv) record(newEntry('parler', ['Demande de parole'], 'parole'));
   $('#ovRoot').innerHTML = `<div class="ov" role="dialog" aria-modal="true" aria-labelledby="ovT"><div class="ovc">
     <h2 id="ovT">${esc(name())} veut parler</h2>
     <p class="muted" style="margin:0">Approche-toi et choisis avec elle comment continuer.</p>
@@ -356,7 +255,7 @@ function render() {
 function renderTop() {
   const now = new Date(), nav = view === 'patient' && F.mode !== 'home';
   $('#top').innerHTML = `
-    <div class="who"><b>${esc(name())}</b><span class="clock">${now.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} · ${fmtT(now)}</span><span id="sync"></span></div>
+    <div class="who"><b>${esc(name())}</b><span class="clock">${now.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} · ${fmtT(now)}</span></div>
     ${nav ? `<button class="ib nav-b" id="tBack" aria-label="Retour">${ic('back')}<span class="lb">Retour</span></button><button class="ib nav-b" id="tHome" aria-label="Accueil">${ic('home')}<span class="lb">Accueil</span></button>` : ''}
     <button class="ib ${tracker.running ? 'on' : ''}" id="tCam" aria-label="Caméra" title="Détection des mouvements de tête">${ic('cam')}<span class="lb">${tracker.running ? 'Tête active' : 'Caméra'}</span></button>
     <button class="ib ${voice ? 'on' : ''}" id="tVoice" aria-label="Voix" title="Lire les questions à voix haute">${ic('voice')}<span class="lb">Voix</span></button>
@@ -366,11 +265,6 @@ function renderTop() {
   $('#tCam').onclick = toggleCam;
   $('#tVoice').onclick = () => { voice = !voice; store.set(K_VOICE, voice); renderTop(); if (voice) speak('Lecture à voix haute activée'); };
   $('#tView').onclick = () => view === 'admin' ? leaveAdmin() : openAdmin();
-  renderSync();
-}
-function renderSync() {
-  const el = $('#sync'); if (!el) return;
-  el.innerHTML = outbox.length ? `<span class="sync" title="Réponses en attente d’enregistrement sur cet appareil">${ic('cloud')} ${outbox.length} en attente</span>` : '';
 }
 function railItems() {
   return [{ id: '__rapide', short: 'Rapide', icon: 'star', h: 40 }, ...S.types.filter(ty => S.themes.some(t => t.group === ty.id))];
@@ -383,7 +277,6 @@ function renderBoard() {
     head = ['Accès rapide', 'Hoche la tête pour tout parcourir'];
     cells = [
       `<button class="cell" style="--h:40" data-act="scan">${ic('scan')}<b>Tout parcourir</b><small>Oui / non thème par thème</small></button>`,
-      ...suggestions().map((s, i) => { const t = theme(s.theme); return `<button class="cell" style="--h:${typeOf(t.group).h}" data-sugg="${i}">${ic(iconFor(t))}<b>${esc(s.path.slice(1).join(' · '))}</b><small>${esc(t.label)} · fréquent</small></button>`; }),
       theme('interaction') ? `<button class="cell" style="--h:300" data-theme="interaction">${ic('interaction')}<b>Poser une question</b><small>${esc(name())} demande à quelqu’un</small></button>` : '',
       `<button class="cell" style="--h:95" data-act="plan">${ic('plan')}<b>Ma journée</b><small>Le programme</small></button>`,
       `<button class="cell" style="--h:40" data-act="spell">${ic('spell')}<b>Épeler</b><small>Lettre par lettre</small></button>`,
@@ -454,7 +347,6 @@ $('#main').addEventListener('click', e => {
   if ((b = g('[data-category]'))) return startBank(b.dataset.category);
   if ((b = g('[data-theme]'))) return startTheme(b.dataset.theme);
   if ((b = g('[data-person]'))) { const p = S.people.find(x => x.id === b.dataset.person), th = personTheme(p); return startTheme(th, `${th}.${p.id}`); }
-  if ((b = g('[data-sugg]'))) return startQuick(suggestions()[+b.dataset.sugg]);
   if ((b = g('[data-deep]'))) { F.dq = deeperList()[+b.dataset.deep]; F.mode = 'deeper'; render(); speak(F.dq); return; }
   if ((b = g('[data-pick]'))) { const [x, y] = b.dataset.pick.split(',').map(Number); return spellPick(x, y); }
   if ((b = g('[data-act]'))) {
@@ -477,7 +369,7 @@ document.addEventListener('keydown', e => {
 function flash(a) { const el = $({ oui: '#bYes', non: '#bNo', parler: '#bTalk' }[a]); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 350); }
 
 /* ================================================================ espace soignant */
-let tab = 'resume', histF = '', armed = '';
+let tab = 'questions', armed = '';
 
 function openAdmin() { location.assign('/admin'); }
 function leaveAdmin() { location.assign('/parler'); }
@@ -495,30 +387,10 @@ async function adm(action, payload, okMsg) {
 
 
 function renderAdmin() {
-  return `<div class="adm"><p class="muted local-notice">Données conservées sur cet appareil uniquement.</p>
-    <div class="seg" role="tablist">${[['resume', 'Résumé'], ['questions', 'Questions'], ['reglages', 'Réglages']].map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" data-tab="${k}" class="${tab === k ? 'cur' : ''}">${l}</button>`).join('')}</div>
-    ${tab === 'resume' ? admResume() : tab === 'questions' ? admQuestions() : admSettings()}
+  return `<div class="adm"><p class="muted local-notice">Questions partagées avec tous les utilisateurs.</p>
+    <div class="seg" role="tablist">${[['questions', 'Questions'], ['reglages', 'Réglages']].map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" data-tab="${k}" class="${tab === k ? 'cur' : ''}">${l}</button>`).join('')}</div>
+    ${tab === 'questions' ? admQuestions() : admSettings()}
   </div>`;
-}
-function admResume() {
-  const day = new Date(); day.setHours(0, 0, 0, 0);
-  const today = S.history.filter(e => e.ts >= day.getTime());
-  const pain = today.filter(e => e.theme === 'douleur'), urg = today.filter(e => e.urgent), talks = today.filter(e => e.result === 'parole'), nf = today.filter(e => e.result === 'non-trouve');
-  const list = S.history.filter(e => !histF || e.theme === histF).slice(0, 60);
-  const pill = r => ({ resolu: '<span class="pill ok">compris</span>', 'non-trouve': '<span class="pill ko">non trouvé</span>', parole: '<span class="pill t">veut parler</span>', message: '<span class="pill ok">message</span>' }[r] || '');
-  return `<div class="stats">
-      <div class="stat"><span class="n">${today.length}</span><span class="l">échanges aujourd’hui</span></div>
-      <div class="stat ${pain.length >= 2 ? 'warn' : ''}"><span class="n">${pain.length}</span><span class="l">douleurs${pain[0] ? ' · ' + esc(pain[0].path.slice(1).join(' › ')) : ''}</span></div>
-      <div class="stat ${urg.length ? 'warn' : ''}"><span class="n">${urg.length}</span><span class="l">prioritaires</span></div>
-      <div class="stat"><span class="n">${talks.length}</span><span class="l">demandes de parole</span></div>
-    </div>
-    ${nf.length ? `<p class="muted" style="margin:0;font-size:14px">${nf.length} besoin(s) non trouvé(s) aujourd’hui : pense à ajouter une question.</p>` : ''}
-    <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px"><h3 style="margin:0">Historique (60 jours)</h3>
-      <select id="histF" style="width:auto" aria-label="Filtrer l’historique">${[['', 'Tout'], ...S.themes.filter(t => !t.private).map(t => [t.id, t.label]), ['parler', 'Parole']].map(([v, l]) => `<option value="${esc(v)}" ${histF === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
-      <ul class="rows">${list.map(e => `<li><time>${fmtD(e.ts)}<br>${fmtT(e.ts)}</time><div class="t"><b>${esc(e.path.join(' › '))}</b>
-        ${e.notes?.length ? `<small>${e.notes.map(([q, a]) => esc(q) + ' → ' + (a === 'oui' ? 'oui' : 'non')).join(' · ')}</small>` : ''}</div>
-        <div>${e.urgent ? '<span class="pill u">prioritaire</span> ' : ''}${pill(e.result)}</div></li>`).join('') || '<li class="muted">Aucun échange pour l’instant.</li>'}</ul>
-      <p class="muted" style="font-size:13px;margin:10px 0 0">${ic('intime')} Les échanges « Vie privée » ne sont jamais enregistrés.</p></div>`;
 }
 const bankEditor = createBankEditor({ getBank: () => S.bank, mutate: adm, rerender: render });
 function admQuestions() { return bankEditor.render(); }
@@ -540,8 +412,8 @@ function admSettings() {
         <label class="fl">Lieu de la conversation<select id="context">${[['tous', 'Tous les lieux'], ['centre', 'Au centre'], ['domicile', 'Au domicile']].map(([v, label]) => `<option value="${v}" ${S.settings.context === v ? 'selected' : ''}>${label}</option>`).join('')}</select></label><p class="muted">Les questions suivent l’ordre défini dans la banque.</p>
         <label class="fl">Amplitude du mouvement de tête : <b id="sensV">${Math.round(S.settings.sens * 100)} %</b><input type="range" id="sens" min="0.5" max="1.6" step="0.05" value="${S.settings.sens}"></label>
       </div></div>
-    <div class="card"><h3>Cet appareil</h3>
-      <p class="muted" style="margin:0">Questions, personnes, programme et historique sont conservés dans ce navigateur. Ils ne sont pas synchronisés avec d’autres appareils. L’accès admin utilise les identifiants configurés sur le serveur.</p>
+    <div class="card"><h3>Données</h3>
+      <p class="muted" style="margin:0">Les questions et réglages sont partagés entre tous les appareils. Les réponses ne sont pas enregistrées.</p>
       <p style="margin:12px 0 0"><a href="/static/anna-qr-code.png" target="_blank" rel="noopener">QR code de la page publique</a></p></div>`;
 }
 function bindAdmin() {
@@ -549,7 +421,6 @@ function bindAdmin() {
   if (tab === 'questions') bankEditor.bind(m);
   const confirmOr = (id, fn) => { if (armed !== id) { armed = id; return render(); } fn(); };
   on('[data-tab]', 'click', e => { tab = e.currentTarget.dataset.tab; armed = ''; render(); });
-  on('#histF', 'change', e => { histF = e.target.value; render(); });
   on('[data-pdel]', 'click', e => { const id = e.currentTarget.dataset.pdel; confirmOr(id, () => adm('delete-person', { id }, 'Personne retirée')); });
   on('#fP', 'submit', e => { e.preventDefault(); adm('add-person', { name: $('#pName').value, role: $('#pRole').value, kind: $('#pKind').value }, 'Personne ajoutée'); });
   on('#savePlan', 'click', () => adm('save-plan', { plan: $('#plan').value }, 'Programme enregistré'));
@@ -592,17 +463,23 @@ async function boot() {
   }
   document.title = `Parler avec ${name()}`;
   if (!adminPage && S.bank) startBank(); else render();
-  flush();
   setInterval(() => { const c = document.querySelector('.clock'); if (c) { const now = new Date(); c.textContent = now.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + fmtT(now); } }, 30000);
 }
 boot();
 
-addEventListener('storage', e => {
-  if (e.key !== 'anna-local-data-v1') return;
+let refreshing = false;
+async function refreshSharedQuestions() {
+  if (adminPage || !S || document.hidden || refreshing) return;
+  refreshing = true;
   const bankBefore = JSON.stringify(S?.bank), contextBefore = S?.settings.context;
-  reload().then(() => {
+  try {
+    await reload();
     const changed = bankBefore !== JSON.stringify(S.bank) || contextBefore !== S.settings.context;
     if (changed && view === 'patient' && F.mode === 'hierarchy') { startBank(); toast('Questions mises à jour. Le parcours reprend au départ.'); }
-    else render();
-  }).catch(x => toast(x.message));
-});
+    else if (changed) render();
+  } catch { /* Garder le parcours en cours et réessayer à la prochaine actualisation. */ }
+  finally { refreshing = false; }
+}
+setInterval(refreshSharedQuestions, 15000);
+addEventListener('focus', refreshSharedQuestions);
+document.addEventListener('visibilitychange', refreshSharedQuestions);

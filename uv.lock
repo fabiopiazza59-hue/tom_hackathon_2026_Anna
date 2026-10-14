@@ -3,7 +3,7 @@ revision = 3
 requires-python = "==3.12.*"
 
 [options]
-exclude-newer = "2026-10-12T11:20:18.603595Z"
+exclude-newer = "2026-10-12T12:34:45.882597Z"
 exclude-newer-span = "P2D"
 
 [[package]]
@@ -12,6 +12,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "uvicorn" },
 ]
 
@@ -24,6 +25,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.115,<1" },
+    { name = "httpx", specifier = ">=0.28,<1" },
     { name = "uvicorn", specifier = ">=0.30,<1" },
 ]
 

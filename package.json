@@ -4,6 +4,6 @@
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.mjs",
-    "check": "node --check static/app.js && node --check static/local-data.js && node --check static/head-tracking.js && node --check static/hierarchy.js && node --check static/bank-editor.js"
+    "check": "node --check static/app.js && node --check static/local-data.js && node --check static/shared-data.js && node --check static/head-tracking.js && node --check static/hierarchy.js && node --check static/bank-editor.js"
   }
 }
