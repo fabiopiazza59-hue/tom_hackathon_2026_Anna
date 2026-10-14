@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f7f7f0">
+  <meta name="description" content="A space to share what matters to you. Accessible, person-led conversations, one question at a time.">
+  <title>Anna · Your voice, your pace</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to main content</a>
+<header><a class="brand" href="/" aria-label="Anna home"><span class="brand-mark" aria-hidden="true">a</span> anna<span class="brand-dot">.</span></a><div class="tools"><button id="text-size" aria-pressed="false">Aa <span>Larger text</span></button><button id="contrast" aria-pressed="false"><span aria-hidden="true">◐</span> High contrast</button></div></header>
+<main id="main">
+  <section id="welcome" class="welcome">
+    <div class="intro"><div class="eyebrow"><span></span> A CONVERSATION THAT STARTS WITH YOU</div><h1>Your voice.<br>Your pace.<br><em>Your everyday.</em></h1><p class="lede">Let’s talk about what matters to you, what gets in your way, and what could make life a little easier.</p><p class="description">A space for people with disabilities to share their own experiences. On your own, or with someone you trust.</p><button class="primary" id="start">Let’s get started <span aria-hidden="true">↗</span></button><p class="small">6 optional questions · Take all the time you need</p></div>
+    <div class="illustration" role="img" aria-label="Two abstract speech bubbles meeting in a warm, welcoming space"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><span class="spark spark-one">✳</span><span class="spark spark-two">✳</span><div class="bubble bubble-one"><span></span><span></span><span></span></div><div class="bubble bubble-two"><svg viewBox="0 0 100 70" aria-hidden="true"><path d="M20 24 Q50 65 80 24"/></svg></div><div class="illustration-note">A little listening.<br>A lot of possibility.</div><span class="vertical-label">MADE FOR REAL CONVERSATIONS</span></div>
+    <div class="principles"><article><span class="number">01</span><div><h2>You’re in control</h2><p>Skip any question. Stop whenever you like.</p></div></article><article><span class="number">02</span><div><h2>Every answer belongs</h2><p>A word, a sentence, or a little more. It’s up to you.</p></div></article><article><span class="number">03</span><div><h2>Your words stay here</h2><p>Answers stay in this tab until you close or reload it. Download only if you choose.</p></div></article></div>
+  </section>
+  <section id="conversation" class="conversation" hidden aria-labelledby="question-title"><div class="session-top"><span class="eyebrow">YOUR EVERYDAY, IN YOUR WORDS</span><button id="pause">Take a break</button></div><div class="progress-label"><span id="step-label"></span><span>No rush. This is your time.</span></div><progress id="progress" max="6" value="1" aria-label="Question progress"></progress><div class="question-card"><span id="category" class="eyebrow"></span><h1 id="question-title" tabindex="-1"></h1><p id="hint" class="hint"></p><button id="read" class="read-button">Listen to this question <span aria-hidden="true">◖))</span></button><label for="answer">Your answer <span>(optional)</span></label><textarea id="answer" rows="5" placeholder="Write whatever you’d like to share…" aria-describedby="hint"></textarea><div class="question-actions"><button id="back">Back</button><div><button id="skip">Skip question</button><button id="next" class="primary">Continue <span aria-hidden="true">→</span></button></div></div></div><p class="session-note">You don’t need to share a diagnosis or any personal details.</p></section>
+  <section id="break" class="break-screen" hidden><div class="eyebrow">A MOMENT FOR YOU</div><h1 tabindex="-1">Take your time.</h1><p>Your answers are still here in this tab. Come back whenever you’re ready.</p><button id="resume" class="primary">Resume conversation →</button></section>
+  <section id="summary" class="summary" hidden><div class="eyebrow">THANK YOU FOR SHARING</div><h1 tabindex="-1">Your experience matters.</h1><p class="lede">Here’s what you shared. You can go back to change an answer, or keep a copy for yourself.</p><div id="answers"></div><div class="summary-actions"><button id="edit">Review answers</button><button id="download" class="primary">Download my answers ↓</button><button id="restart">Clear answers & start again</button></div><p class="small">Nothing has been sent or saved to a server.</p></section>
+  <noscript><p class="noscript">Please enable JavaScript to use the conversation. No answers are sent to a server.</p></noscript>
+</main>
+<footer><span class="footer-brand">anna.</span><span>A little more understanding. A world of possibility.</span><span>Built with care · TOM Hackathon 2026</span></footer>
+<div id="announcement" class="sr-only" role="status" aria-live="polite"></div>
+</body></html>
