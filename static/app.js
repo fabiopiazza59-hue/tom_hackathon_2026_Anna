@@ -438,7 +438,7 @@ function flash(a) { const el = $({ oui: '#bYes', non: '#bNo', parler: '#bTalk' }
 let tab = 'resume', qType = '', qTheme = '', qSearch = '', histF = '', armed = '';
 
 function openAdmin() { location.assign('/admin'); }
-function leaveAdmin() { location.assign('/'); }
+function leaveAdmin() { location.assign('/parler'); }
 async function adm(action, payload, okMsg) {
   try {
     const r = await api('POST', '/api/admin?action=' + action, payload);

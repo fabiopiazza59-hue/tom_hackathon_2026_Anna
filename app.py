@@ -54,6 +54,12 @@ def admin_session():
 
 @app.get("/")
 def index():
+    return FileResponse(ROOT / "static" / "home.html", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/parler")
+@app.get("/parler/", include_in_schema=False)
+def conversation():
     return FileResponse(ROOT / "static" / "index.html", headers={"Cache-Control": "no-store"})
 
 

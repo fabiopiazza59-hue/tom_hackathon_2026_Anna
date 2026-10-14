@@ -5,6 +5,7 @@ Interface de communication reprise de la maquette `localhost:3000` : catégories
 ## Ouvrir le site
 
 - [Page publique](https://tom-hackathon-2026-anna.vercel.app/)
+- [Interface avec pictogrammes](https://tom-hackathon-2026-anna.vercel.app/parler), accessible depuis le bouton « Poser la question » de l’accueil.
 - [Administration](https://tom-hackathon-2026-anna.vercel.app/admin) — accès protégé par les identifiants configurés dans Vercel.
 
 [![QR code de la page publique](docs/anna-qr-code.png)](https://tom-hackathon-2026-anna.vercel.app/)

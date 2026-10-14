@@ -8,9 +8,14 @@ client = TestClient(app)
 def test_page_and_assets():
     response = client.get("/")
     assert response.status_code == 200
+    assert '/static/anna.jpeg' in response.text
+    assert 'href="/parler"' in response.text
+    assert 'Poser la question' in response.text
+    response = client.get("/parler")
+    assert response.status_code == 200
     assert '<title>Parler avec Anna</title>' in response.text
     assert 'id="bYes"' in response.text
-    for path in ("/static/app.js", "/static/style.css"):
+    for path in ("/static/app.js", "/static/style.css", "/static/home.css", "/static/home.js"):
         assert client.get(path).status_code == 200
 
 
