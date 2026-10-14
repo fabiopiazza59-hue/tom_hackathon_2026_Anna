@@ -5,6 +5,7 @@ import { createBankEditor } from './bank-editor.js';
 import { createPeopleEditor } from './people-editor.js';
 import { createActivity } from './activity.js';
 import { themeOrder, topQuestions } from './recommendations.js';
+import { calendar } from './question-rules.js';
 
 const adminPage = /^\/admin\/?$/.test(location.pathname);
 
@@ -85,7 +86,7 @@ let S = null;          // données de la personne (banque, personnes et réglage
 let F = { mode: 'home' }, undo = [], view = adminPage ? 'admin' : 'patient', cat = '__rapide';
 let voice = store.get(K_VOICE, false), mood = null, topCache = [];
 let usageRevision = null, sharedStats = {}, sharedHistory = [], sharedAnswers = [], activityError = '';
-const parisHour = () => Number(new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', hour: 'numeric', hourCycle: 'h23' }).format(new Date()));
+const parisHour = () => calendar().hour;
 const activity = createActivity({ storage: localStorage, onPending: () => renderSync() });
 setInterval(() => activity.flush().catch(() => {}), 15000);
 addEventListener('online', () => activity.flush().catch(() => {}));
@@ -181,7 +182,7 @@ const MOOD = {
 const moodAnswer = () => mood === 'ok' ? 'oui' : mood === 'ko' ? 'non' : null;
 function themesInOrder() { return themeOrder(S.bank, moodAnswer(), S.settings.context).map(theme).filter(Boolean); }
 function top3() {
-  return topQuestions(S.bank, S.stats, { answer: moodAnswer(), context: S.settings.context, hour: parisHour() })
+  return topQuestions(S.bank, S.stats, { answer: moodAnswer(), context: S.settings.context })
     .map(o => ({ kind: 'item', t: theme(o.themeId), it: { id: o.nodeId, l: o.label, q: o.q } }));
 }
 function showHello() { F = { mode: 'hello', id: crypto.randomUUID(), t0: Date.now() }; undo = []; render(); speak('Coucou, est-ce que tu veux parler ?'); }
