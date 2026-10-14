@@ -12,9 +12,13 @@ Interface de communication reprise de la maquette `localhost:3000` : catégories
 
 ## Utilisation
 
-L’accueil conserve la photo d’Anna. « Poser la question » ouvre le parcours avec **« Ça va ? »**, puis **catégorie → sous-catégorie → question → sous-question**. Répondre par **Oui / Non** au toucher, au clavier (**O / N**) ou avec la tête après activation de la caméra. « Je veux parler » reste une commande d’assistance indépendante.
+L’accueil conserve la photo d’Anna. « Poser la question » ouvre la nouvelle interface : **« Coucou, est-ce que tu veux parler ? »**, puis la question de départ de la banque (**« Ça va ? »**). La réponse détermine l’ordre des thèmes et les branches disponibles. « Non, pas maintenant » affiche un écran calme avec un bouton Reprendre. On peut aussi passer directement aux thèmes.
 
-Oui descend au niveau suivant ; Non passe à l’élément suivant du même niveau. Une phrase Non explicitement renseignée, notamment un refus d’autorisation, est restituée comme réponse et termine la branche. En fin de branche, la phrase Oui du dernier élément retenu sert de résumé. Retour permet de corriger la dernière réponse ; Accueil ouvre les pictogrammes.
+La grille reprend la maquette `localhost:3000` : une ligne Top 3, puis une ligne par sous-catégorie avec trois pictogrammes et Voir plus. La pagination donne accès à tous les thèmes. Un pictogramme ouvre directement la question correspondante ; Tout parcourir conserve le parcours **catégorie → sous-catégorie → question → sous-question**. Les textes viennent de la banque partagée, sans réimporter les questions de démonstration.
+
+Répondre par **Oui / Non** au toucher, au clavier (**O / N**) ou avec la tête après activation de la caméra. « Je veux parler » reste une commande d’assistance indépendante.
+
+Oui descend au niveau suivant ; Non passe à l’élément suivant du même niveau. Une phrase Non explicitement renseignée, notamment un refus d’autorisation, est restituée comme réponse et termine la branche. En fin de branche, la phrase Oui du dernier élément retenu est affichée. Retour permet de corriger la dernière réponse ; Accueil revient à l’ouverture.
 
 Les catégories suivent `ordre_si_oui` ou `ordre_si_non` après la réponse à « Ça va ? », avec repli sur `ordre`. Les sous-catégories respectent `branche_oui_non`. Chaque niveau suit ensuite son `ordre` ; les valeurs vides viennent après les valeurs renseignées et conservent l’ordre d’import. Les égalités gardent également l’ordre d’import.
 
@@ -26,19 +30,23 @@ python3 scripts/import_questions.py
 
 Les champs supplémentaires (`poids`, `heures_pic`, `jours`, `contraire_id`, `personne_id`, etc.) sont conservés dans les métadonnées de chaque élément. Ils n’ajoutent pas de tri ou de filtre temporel automatique. Le lieu choisi dans Réglages filtre les indicateurs `centre` / `domicile` ; par défaut, tous les lieux sont affichés.
 
-Le bouton **Caméra** demande l’autorisation du navigateur, puis utilise MediaPipe localement : hocher = oui, tourner = non, pencher une seconde = parler. Les images restent dans le navigateur. La reconnaissance doit être calibrée avec Anna ; les boutons et le clavier restent disponibles.
+Le bouton **Caméra** demande l’autorisation du navigateur, puis utilise MediaPipe localement, comme la maquette : tête vers sa gauche = oui, vers sa droite = non, pencher une seconde = parler. La caméra arrière est privilégiée pour qu’un accompagnant tienne le téléphone face à Anna. Les images restent dans le navigateur. La reconnaissance doit être calibrée avec Anna ; les boutons et le clavier restent disponibles.
 
 ## Administration et données
 
-L’admin propose **Questions** et **Réglages**, et s’ouvre directement sur la banque. L’onglet Questions montre les cinq niveaux de la hiérarchie, avec recherche, ajout, modification et suppression. On peut modifier le texte, le libellé, le parent, les ordres, les phrases Oui/Non, la branche et les lieux autorisés. Supprimer un élément supprime aussi ses descendants après confirmation. La question de départ est modifiable mais ne peut pas être supprimée.
+L’admin propose **Résumé**, **Questions** et **Réglages**, et s’ouvre directement sur la banque. Résumé affiche l’historique partagé et les réponses détaillées, avec filtre par thème et actualisation. L’onglet Questions montre les cinq niveaux de la hiérarchie, avec recherche, ajout, modification et suppression. On peut modifier le texte, le libellé, le parent, les ordres, les phrases Oui/Non, la branche et les lieux autorisés. Supprimer un élément supprime aussi ses descendants après confirmation. La question de départ est modifiable mais ne peut pas être supprimée. Pendant une sauvegarde, le bouton affiche « Enregistrement en cours… » et empêche les doubles envois.
 
 Les questions, les personnes et les réglages sont conservés dans un **stockage privé Vercel Blob**, commun à tous les utilisateurs et durable entre déploiements. L’admin n’annonce un enregistrement qu’après sa sauvegarde sur le serveur. Les pages publiques ouvertes vérifient les mises à jour toutes les 15 secondes et à leur retour au premier plan. Si la banque change pendant le parcours, celui-ci reprend au départ avec un message.
 
 Au premier chargement de l’admin, si le stockage partagé est vide, la banque personnalisée de cet ancien navigateur est automatiquement importée, avec ses personnes et réglages. Ouvrir l’admin dans le navigateur qui contient les modifications à conserver. Une banque partagée déjà initialisée n’est jamais écrasée par les anciennes données locales d’un autre appareil. Les anciennes banques locales restent disponibles en sauvegarde ; la préférence vocale reste propre à chaque appareil.
 
-Les réponses, demandes de parole, messages épelés, temps de réponse et statistiques ne sont ni enregistrés ni envoyés. Le parcours et le retour en arrière restent seulement en mémoire jusqu’au rechargement ou à la fermeture de la page. Au chargement, les anciennes interactions sont retirées du stockage local principal et de la sauvegarde de migration ; l’ancienne file d’attente est supprimée. Les questions et réglages sont conservés.
+À partir de cette version, les réponses Oui/Non, les temps de réponse et les résultats des échanges (y compris demandes de parole et messages épelés) sont enregistrés dans **`anna/activity.json`**, séparément de la configuration **`anna/config.json`**. Il n’y a aucun identifiant permanent de personne ou d’appareil. Les identifiants aléatoires des échanges et envois permettent les corrections et la déduplication. Les réponses en attente restent sur l’appareil jusqu’à confirmation du serveur et sont renvoyées après reconnexion. La fenêtre de déduplication conserve les 5 000 derniers identifiants. Les échanges supprimés par l’ancienne version ne sont pas reconstitués.
 
-Le serveur Python ne reçoit pas les réponses. Il sert les fichiers, expose la configuration par `GET /api/config`, et protège `/admin`, `/api/admin-session` et `PUT /api/config` par HTTP Basic. Chaque écriture exige la version affichée (`If-Match`) ; une modification concurrente est refusée avec un message demandant de recharger. La structure de la banque est validée et les champs d’interactions sont refusés. Les lectures contournent le cache du stockage pour refléter immédiatement les enregistrements.
+L’historique conserve les **300 derniers échanges** et les **2 000 dernières réponses détaillées**. Les statistiques par question sont cumulatives : nombre de réponses, Oui/Non, temps cumulé et heures habituelles des Oui (heure de Paris). Le Top 3 s’appuie sur le taux de Oui (50 %), l’usage relatif (30 %) et la rapidité (20 %), avec un bonus pour l’heure habituelle. Après la question de départ, il propose un besoin par thème prioritaire selon les ordres et branches de la banque. Le parcours complet conserve toujours les ordres explicites. Les statistiques d’ouverture ne biaisent pas le score d’usage des questions.
+
+Le serveur Python conserve FastAPI et les mêmes identifiants. `GET /api/config` fournit la banque ; `PUT /api/config`, `/admin`, `/api/admin-session` et **`GET /api/history`** sont protégés par HTTP Basic. `POST /api/interactions` reçoit les événements validés et `GET /api/usage` ne fournit que les statistiques agrégées pour le Top 3. Aucun texte d’échange ni réponse individuelle n’est accessible via cet endpoint public. La configuration refuse toujours les champs d’interactions.
+
+Chaque écriture de configuration exige la version affichée (`If-Match`) ; une modification concurrente est refusée avec un message demandant de recharger. Les écritures d’usages utilisent aussi une condition de version et sont fusionnées après conflit afin de conserver les réponses de plusieurs utilisateurs. Les lectures contournent le cache du stockage pour refléter les enregistrements.
 
 Définir `ADMIN_USERNAME`, `ADMIN_PASSWORD` et `BLOB_READ_WRITE_TOKEN` dans les variables de production Vercel. La connexion au magasin privé `anna-shared-questions` fournit le jeton Blob. Les valeurs ne sont jamais dans GitHub ni envoyées au navigateur. Sans stockage configuré en production, le serveur renvoie une erreur au lieu de prétendre enregistrer dans un fichier temporaire. Le navigateur peut conserver l’authentification jusqu’à sa fermeture.
 
@@ -55,7 +63,7 @@ export ADMIN_PASSWORD="votre-mot-de-passe"
 uv run uvicorn app:app --reload
 ```
 
-Ouvrir http://127.0.0.1:8000. Sans jeton Blob, le serveur local conserve la configuration dans `data/config.local.json` (ignoré par Git), avec verrou et remplacement atomique. `ANNA_CONFIG_FILE` permet de choisir un autre fichier. Si la configuration uv locale utilise un proxy indisponible : `uv --no-config sync`.
+Ouvrir http://127.0.0.1:8000. Sans jeton Blob, le serveur local utilise `data/config.local.json` et `data/activity.local.json` (ignorés par Git), avec verrou et remplacement atomique. `ANNA_CONFIG_FILE` et `ANNA_ACTIVITY_FILE` permettent de choisir d’autres fichiers. Si la configuration uv locale utilise un proxy indisponible : `uv --no-config sync`.
 
 ```sh
 uv run pytest

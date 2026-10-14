@@ -51,6 +51,22 @@ export function startHierarchy(bank, { context = 'tous', targetId = null } = {})
   return { current: bank.root, answer: null, context, targetId, frames: [], path: [], selected: [], done: false, result: null };
 }
 
+export function startAtHierarchy(bank, id, { context = 'tous', answer = null } = {}) {
+  const entry = findEntry(bank, id);
+  if (!entry?.parent) return startHierarchy(bank, { context });
+  const ancestors = entry.path;
+  const state = startHierarchy(bank, { context });
+  state.answer = answer;
+  state.current = entry.node;
+  state.path = ancestors.filter(n => n.level !== 'master' || answer).map(n => ({ ...n, response: n.level === 'master' ? answer : 'oui' }));
+  state.selected = ancestors.filter(n => n.level !== 'master');
+  const siblings = availableChildren(entry.parent, answer, context);
+  const index = siblings.findIndex(n => n.id === id);
+  if (index < 0) return startHierarchy(bank, { context });
+  state.frames = [{ nodes: siblings, index }];
+  return state;
+}
+
 export function answerHierarchy(bank, previous, answer) {
   const state = structuredClone(previous);
   const node = state.current;

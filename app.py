@@ -7,6 +7,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 from shared_config import SharedConfig, ConfigConflict, ConfigUnavailable, get_config_store
+from activity import InteractionBatch, append_events, get_activity_store
 
 ROOT = Path(__file__).parent
 app = FastAPI(title="Anna", docs_url=None, redoc_url=None)
@@ -82,6 +83,33 @@ def write_config(config: SharedConfig, if_match: str | None = Header(default=Non
         raise HTTPException(status_code=409, detail="La banque a été modifiée ailleurs. Rechargez la page avant de réessayer.") from None
     return JSONResponse(
         {"revision": snapshot.revision}, headers={"Cache-Control": "no-store", "ETag": snapshot.revision},
+    )
+
+
+@app.post("/api/interactions")
+def record_interactions(batch: InteractionBatch, request: Request, store=Depends(get_activity_store)):
+    origin = request.headers.get("origin")
+    if origin and origin != f"{request.url.scheme}://{request.url.netloc}":
+        raise HTTPException(status_code=403, detail="Origine non autorisée.")
+    append_events(store, batch.events)
+    return JSONResponse({"ok": True}, headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/usage")
+def read_usage(if_none_match: str | None = Header(default=None), store=Depends(get_activity_store)):
+    snapshot = store.read(if_none_match)
+    if snapshot is None:
+        return Response(status_code=304, headers={"Cache-Control": "no-store", "ETag": if_none_match})
+    # No conversation text or individual answers are exposed on the public page.
+    return JSONResponse({"stats": snapshot.config["stats"]}, headers={"Cache-Control": "no-store", "ETag": snapshot.revision})
+
+
+@app.get("/api/history", dependencies=[Depends(require_admin)])
+def read_history(store=Depends(get_activity_store)):
+    doc = store.read().config
+    return JSONResponse(
+        {"history": list(reversed(doc["history"])), "answers": doc["answers"]},
+        headers={"Cache-Control": "private, no-store"},
     )
 
 

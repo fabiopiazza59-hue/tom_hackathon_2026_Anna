@@ -30,7 +30,7 @@ export function createBankEditor({ getBank, mutate, rerender }) {
     const input = (label, key, type = 'text') => `<label class="fl">${label}<input name="${key}" type="${type}" value="${esc(node[key] ?? '')}" ${type === 'number' ? 'min="0" step="1"' : 'maxlength="100"'}></label>`;
     const parents = entries(bank).filter(e => e.node.level === LEVELS[index - 1]);
     return `<div class="card bank-edit" id="bank-editor"><h3 tabindex="-1">${editing ? 'Modifier' : 'Ajouter'} · ${LEVEL_NAMES[index]}</h3><form id="bank-form" class="fgrid c2">
-      <label class="fl wide">Question<input name="q" aria-label="Question à poser" value="${esc(node.q || '')}" required maxlength="600"></label>
+      <label class="fl wide">Question<input type="text" name="q" aria-label="Question à poser" value="${esc(node.q || '')}" required maxlength="600"></label>
       ${input('Libellé', 'label')}
       ${index ? input('Ordre (facultatif)', 'order', 'number') : ''}
       ${index ? `<label class="fl wide">Parent<select name="parentId">${parents.map(e => `<option value="${esc(e.node.id)}" ${parent?.id === e.node.id ? 'selected' : ''}>${esc([...e.path.filter(p => p.level !== 'master'), e.node].map(p => p.label).join(' › '))}</option>`).join('')}</select></label>` : ''}

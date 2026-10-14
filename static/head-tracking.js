@@ -1,11 +1,12 @@
 // Suivi des mouvements de tête avec MediaPipe Face Landmarker (Tasks Vision), 100 % dans le navigateur :
 // les images de la caméra ne quittent jamais l'appareil, seuls les gestes (oui / non / parler) sont émis.
-//   hocher la tête = oui · tourner la tête = non · pencher la tête 1 s = je veux parler
+//   tête tournée vers SA gauche = oui · vers SA droite = non · pencher la tête 1 s = je veux parler
+// (getSwap() inverse gauche et droite si la caméra de l'appareil renvoie une image miroir)
 
 const VISION = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14';
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task';
 
-export function createHeadTracker({ video, onGesture, onMeters, onStatus, getSensitivity }) {
+export function createHeadTracker({ video, onGesture, onMeters, onStatus, getSensitivity, getSwap = () => false, getFacing = () => 'environment' }) {
   let landmarker = null, stream = null, running = false, raf = 0, lastTime = -1;
   const st = { base: null, calib: [], exc: null, cool: 0, rollT: 0 };
 
@@ -20,7 +21,10 @@ export function createHeadTracker({ video, onGesture, onMeters, onStatus, getSen
   }
 
   async function start() {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+    // Caméra arrière par défaut : le téléphone est tenu par la personne en face d'Anna, écran vers elle.
+    const facing = getFacing();
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing }, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
+    video.style.transform = facing === 'user' ? 'scaleX(-1)' : 'none';   // aperçu en miroir seulement pour la caméra avant
     video.srcObject = stream;
     await video.play();
     await load();
@@ -74,7 +78,9 @@ export function createHeadTracker({ video, onGesture, onMeters, onStatus, getSen
     }
     const k = getSensitivity(), kP = 0.12 * k, kY = 0.16 * k, kR = 0.26 * k;
     const dp = pitch - st.base.p, dy = yaw - st.base.y, dr = roll - st.base.r, now = performance.now();
-    onMeters(Math.abs(dp) / kP, Math.abs(dy) / kY, Math.abs(dr) / kR);
+    // Dans l'image brute de la caméra, le nez part vers la droite de l'image quand Anna tourne vers SA gauche.
+    const left = getSwap() ? -dy : dy;
+    onMeters(Math.max(0, left) / kY, Math.max(0, -left) / kY, Math.abs(dr) / kR);
     if (now < st.cool) { st.exc = null; return; }
 
     // Pencher la tête et tenir 1 seconde = je veux parler
@@ -85,10 +91,11 @@ export function createHeadTracker({ video, onGesture, onMeters, onStatus, getSen
     }
     st.rollT = 0;
 
-    // Un geste = une excursion au-delà du seuil puis un retour au repos en moins de 1,6 s.
+    // Un geste = tourner la tête au-delà du seuil puis revenir au repos en moins de 1,6 s.
+    // Le sens de la rotation la plus forte décide : vers sa gauche = oui, vers sa droite = non.
+    // Un mouvement surtout vertical (hocher, baisser la tête) n'est pas un geste.
     if (!st.exc) {
-      if (Math.abs(dp) > kP && Math.abs(dp) / kP >= Math.abs(dy) / kY) st.exc = { ax: 'p', t: now, pp: 0, py: 0 };
-      else if (Math.abs(dy) > kY) st.exc = { ax: 'y', t: now, pp: 0, py: 0 };
+      if (Math.abs(dy) > kY) st.exc = { t: now, py: 0, pp: 0, peak: 0 };
       else if (Math.abs(dp) < kP * 0.3 && Math.abs(dy) < kY * 0.3) {
         // Au repos : la position de référence suit lentement les petits glissements.
         st.base.p += 0.02 * dp; st.base.y += 0.02 * dy; st.base.r += 0.02 * dr;
@@ -96,12 +103,12 @@ export function createHeadTracker({ video, onGesture, onMeters, onStatus, getSen
     }
     if (st.exc) {
       const e = st.exc;
-      e.pp = Math.max(e.pp, Math.abs(dp) / kP); e.py = Math.max(e.py, Math.abs(dy) / kY);
+      if (Math.abs(left) > Math.abs(e.peak)) e.peak = left;
+      e.py = Math.max(e.py, Math.abs(dy) / kY); e.pp = Math.max(e.pp, Math.abs(dp) / kP);
       if (now - e.t > 1600) { st.exc = null; if (now - e.t > 4000) recalibrate(); }
-      else if (Math.abs(dp) < kP * 0.45 && Math.abs(dy) < kY * 0.45) {
+      else if (Math.abs(dy) < kY * 0.45) {
         st.exc = null;
-        if (e.ax === 'p' && e.pp > e.py * 1.15) { fire('oui'); st.cool = now + 1200; }
-        else if (e.ax === 'y' && e.py > e.pp * 1.15) { fire('non'); st.cool = now + 1200; }
+        if (e.py > e.pp * 1.15) { fire(e.peak > 0 ? 'oui' : 'non'); st.cool = now + 1200; }
       }
     }
   }

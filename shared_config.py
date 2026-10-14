@@ -1,4 +1,4 @@
-"""Shared configuration only. Answers and interaction history are never stored."""
+"""Shared question configuration, stored separately from interaction history."""
 from dataclasses import dataclass
 import fcntl
 import hashlib
@@ -125,13 +125,19 @@ class FileConfigStore:
     def __init__(self, path):
         self.path = Path(path)
 
+    def initial(self):
+        return seed_snapshot()
+
+    def decode(self, data):
+        return SharedConfig.model_validate_json(data).export()
+
     def read(self, revision=None):
         try:
             data = self.path.read_bytes()
         except FileNotFoundError:
-            snapshot = seed_snapshot()
+            snapshot = self.initial()
         else:
-            config = SharedConfig.model_validate_json(data).export()
+            config = self.decode(data)
             snapshot = Snapshot(config, '"' + hashlib.sha256(data).hexdigest() + '"')
         return None if snapshot.revision == revision else snapshot
 
@@ -172,6 +178,12 @@ class BlobConfigStore:
         except httpx.HTTPError:
             raise ConfigUnavailable() from None
 
+    def initial(self):
+        return seed_snapshot()
+
+    def decode(self, data):
+        return SharedConfig.model_validate_json(data).export()
+
     def read(self, revision=None):
         headers = {"Authorization": f"Bearer {self.token}", "Accept-Encoding": "identity"}
         if revision and revision != EMPTY_REVISION:
@@ -180,11 +192,11 @@ class BlobConfigStore:
         if response.status_code == 304:
             return None
         if response.status_code == 404:
-            return None if revision == EMPTY_REVISION else seed_snapshot()
+            return None if revision == EMPTY_REVISION else self.initial()
         if response.status_code != 200 or not response.headers.get("etag"):
             raise ConfigUnavailable()
         try:
-            config = SharedConfig.model_validate_json(response.content).export()
+            config = self.decode(response.content)
         except ValueError:
             raise ConfigUnavailable() from None
         # The CDN can add W/ when compressing a response; writes need the storage ETag.
