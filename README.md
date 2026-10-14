@@ -14,7 +14,8 @@ Interface de communication reprise de la maquette `localhost:3000` : catégories
 
 L’accueil conserve la photo d’Anna. « Poser la question » ouvre la nouvelle interface : **« Coucou, est-ce que tu veux parler ? »**, puis la question de départ de la banque (**« Ça va ? »**). La réponse détermine l’ordre des thèmes et les branches disponibles. « Non, pas maintenant » affiche un écran calme avec un bouton Reprendre. On peut aussi passer directement aux thèmes.
 
-La grille reprend la maquette `localhost:3000` : une ligne Top 3, puis une ligne par sous-catégorie avec trois pictogrammes et Voir plus. La pagination donne accès à tous les thèmes. Un pictogramme ouvre directement la question correspondante ; Tout parcourir conserve le parcours **catégorie → sous-catégorie → question → sous-question**. Les textes viennent de la banque partagée, sans réimporter les questions de démonstration.
+La grille conserve le design de la maquette `localhost:3000` : une ligne Top 3, puis **une ligne par catégorie**, avec ses trois premières sous-catégories et Voir plus. La pagination donne accès à toutes les catégories. Une catégorie ouvre toutes ses sous-catégories ; une sous-catégorie ouvre uniquement ses questions, dans leur ordre enregistré. Une question ouvre le parcours Oui / Non et ses sous-questions. Les tuiles et leurs pictogrammes proviennent des nœuds de la banque partagée ; les personnes liées affichent leur initiale. Tout parcourir conserve le parcours **catégorie → sous-catégorie → question → sous-question**. Les branches Oui / Non et le lieu filtrent également la grille.
+
 
 Répondre par **Oui / Non** au toucher, au clavier (**O / N**) ou avec la tête après activation de la caméra. « Je veux parler » reste une commande d’assistance indépendante.
 

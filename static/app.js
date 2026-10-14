@@ -6,6 +6,7 @@ import { createPeopleEditor } from './people-editor.js';
 import { createActivity } from './activity.js';
 import { themeOrder, topQuestions } from './recommendations.js';
 import { calendar } from './question-rules.js';
+import { categoryRows, nodeIcon } from './bank-board.js';
 
 const adminPage = /^\/admin\/?$/.test(location.pathname);
 
@@ -265,6 +266,7 @@ function conclude(result, it) {
 }
 function back() {
   if (F.hierarchy) { const previous = undo.pop(); if (!previous) return goHome(); F = JSON.parse(previous); F.qTs = Date.now(); render(); speak(F.hierarchy.current.q); return; }
+  if (F.mode === 'home' && boardTheme) { const parent = findEntry(S.bank, boardTheme)?.parent; boardTheme = parent?.level === 'master' ? null : parent?.id; themePage = 0; return render(); }
   if (F.mode === 'spell' || F.mode === 'home') return goHome();
   if (F.mode === 'deeper') { F.mode = 'done'; return render(); }
   const s = undo.pop(); if (!s) return goHome();
@@ -390,14 +392,19 @@ const pager = (page, pages, prev, next) => pages > 1 ? `<nav class="pager" aria-
     <span>Page ${page + 1} / ${pages}</span>
     <button class="btn" data-act="${next}" ${page >= pages - 1 ? 'disabled' : ''}>Suivante ${ic('droite')}</button></nav>` : '';
 // Pictogrammes d'un thème, les plus importants d'abord : personnes (thèmes Proches / Personnes) puis questions.
-function themePics(t, h) {
-  const people = t.dynamic ? ordered(peopleOf(t).map(p => personItem(t, p))).map(it => { const p = S.people.find(x => x.id === it.person); return pic(`data-person="${esc(p.id)}"`, avatar(p), p.name, h); }) : [];
-  const items = ordered(t.items).map(it => pic(`data-item="${esc(it.id)}" data-th="${esc(t.id)}"`, ic(itemIcon(it, t)), it.l, h, it.urgent ? 'urg' : ''));
-  return [...people, ...items];
+function bankIcon(node) {
+  const person = node.personId && S.people.find(p => p.id === node.personId);
+  if (person) return avatar(person);
+  const icon = nodeIcon(node);
+  return ic(document.getElementById('i-' + icon) ? icon : 'question');
+}
+function nodePic(node, h) {
+  const action = ['category', 'subcategory'].includes(node.level) ? `data-browse="${esc(node.id)}"` : `data-item="${esc(node.id)}"`;
+  return pic(action, bankIcon(node), node.label, h);
 }
 function boardSpace() { return Math.max(160, ($('#main')?.clientHeight || 600) - 24); }
 function renderBoard() {
-  if (boardTheme && theme(boardTheme)) return renderThemePage();
+  if (boardTheme && findEntry(S.bank, boardTheme)) return renderThemePage();
   boardTheme = null;
   const avail = boardSpace(), rowH = avail > 700 ? 124 : 104;   // lignes hautes : lisibles par la personne qui tient le téléphone
   const note = MOOD[mood]?.note && boardPage === 0 ? `<p class="moodnote ${mood}">${ic(mood === 'ko' ? 'douleur' : 'content')} ${esc(MOOD[mood].note)}</p>` : '';
@@ -410,14 +417,14 @@ function renderBoard() {
       const label = INTENS.some(x => x.l === leaf) && p.length > 2 ? `${p[p.length - 2]} · ${leaf}` : leaf;
       return pic(`data-top="${i}"`, ic(itemIcon({ l: leaf }, t)), label, typeOf(t.group).h, 'hot');
     }
-    return pic(`data-top="${i}"`, ic(itemIcon(o.it, o.t)), o.it.l, typeOf(o.t.group).h, 'hot');
+    return pic(`data-top="${i}"`, bankIcon(findEntry(S.bank, o.it.id).node), o.it.l, typeOf(o.t.group).h, 'hot');
   }).join('')}${pic('data-act="scan"', ic('scan'), 'Tout parcourir', 40)}</div>`;
-  const rows = [topRow, ...themesInOrder().map(t => {
-    const h = typeOf(t.group).h, all = themePics(t, h);
-    const more = all.length > 3 ? pic(`data-act="openTheme" data-th="${esc(t.id)}"`, `<b class="plus">+${all.length - 3}</b>`, 'Voir plus', h, 'more') : '<span></span>';
+  const rows = [topRow, ...categoryRows(S.bank, moodAnswer(), S.settings.context).map(({ category, children }) => {
+    const h = category.hue ?? hue(category.id);
+    const more = children.length > 3 ? pic(`data-browse="${esc(category.id)}"`, `<b class="plus">+${children.length - 3}</b>`, 'Voir plus', h, 'more') : '<span></span>';
     return `<div class="trow" style="--h:${h}">
-      <button class="tlab" data-act="openTheme" data-th="${esc(t.id)}">${ic(iconFor(t))}<span>${esc(t.label)}</span></button>
-      ${all.slice(0, 3).join('')}${'<span></span>'.repeat(Math.max(0, 3 - all.length))}${more}</div>`;
+      <button class="tlab" data-browse="${esc(category.id)}">${bankIcon(category)}<span>${esc(category.label)}</span></button>
+      ${children.slice(0, 3).map(n => nodePic(n, h)).join('')}${'<span></span>'.repeat(Math.max(0, 3 - children.length))}${more}</div>`;
   }), `<div class="trow" style="--h:40"><div class="tlab">${ic('spell')}<span>Autres</span></div>${pic('data-act="spell"', ic('spell'), 'Épeler', 40)}${pic('data-act="plan"', ic('plan'), 'Ma journée', 95)}${pic('data-act="scan"', ic('scan'), 'Tout parcourir', 40)}<span></span></div>`];
   const pages = Math.max(1, Math.ceil(rows.length / perPage));
   boardPage = Math.min(boardPage, pages - 1);
@@ -460,17 +467,19 @@ function renderWelcome() {
 }
 // Page d'un thème : tous ses pictogrammes, en pages si besoin.
 function renderThemePage() {
-  const t = theme(boardTheme), h = typeOf(t.group).h, all = themePics(t, h);
+  const entry = findEntry(S.bank, boardTheme), node = entry.node;
+  const category = node.level === 'category' ? node : entry.path.find(n => n.level === 'category');
+  const h = category?.hue ?? hue(node.id);
+  const all = availableChildren(node, moodAnswer(), S.settings.context).map(n => nodePic(n, h));
   const avail = boardSpace(), w = $('#main')?.clientWidth || 360;
-  const cols = w >= 900 ? 5 : w >= 560 ? 4 : 3, rows = Math.max(1, Math.floor((avail - 64 - 56) / (avail > 700 ? 130 : 112)));
+  const cols = w >= 900 ? 5 : w >= 560 ? 4 : 3, rows = Math.max(1, Math.floor((avail - 120) / (avail > 700 ? 130 : 112)));
   const per = cols * rows, pages = Math.max(1, Math.ceil(all.length / per));
   themePage = Math.min(themePage, pages - 1);
+  const parentId = entry.parent?.level === 'master' ? '' : entry.parent?.id || '';
   return `<div class="page">
-    <div class="phead" style="--h:${h}"><button class="btn" data-act="closeTheme">${ic('back')} Thèmes</button><h2>${ic(iconFor(t))} ${esc(t.label)}</h2>
-      <button class="btn sm" data-act="themeScan" data-th="${esc(t.id)}">${ic('scan')} Oui / non</button></div>
-    ${t.private ? `<span class="lockn">${ic('intime')} Rien n’est enregistré</span>` : ''}
-    ${all.length ? `<div class="pgrid" style="grid-template-columns:repeat(${cols},minmax(0,1fr));grid-template-rows:repeat(${rows},minmax(0,1fr))">${all.slice(themePage * per, (themePage + 1) * per).join('')}</div>`
-      : '<p class="empty">Pas encore de questions dans ce thème. Ajoute-les dans l’espace admin, onglet « Questions ».</p>'}
+    <div class="phead" style="--h:${h}"><button class="btn" data-browse="${esc(parentId)}">${ic('back')} ${esc(entry.parent?.level === 'master' ? 'Catégories' : entry.parent?.label)}</button><h2>${bankIcon(node)} ${esc(node.label)}</h2>
+      <button class="btn sm" data-act="themeScan" data-th="${esc(node.id)}">${ic('scan')} Oui / non</button></div>
+    ${all.length ? `<div class="pgrid" style="grid-template-columns:repeat(${cols},minmax(0,1fr));grid-template-rows:repeat(${rows},minmax(0,1fr))">${all.slice(themePage * per, (themePage + 1) * per).join('')}</div>` : `<p class="empty">${esc(node.q)}</p><button class="btn" data-item="${esc(node.id)}">Poser la question</button>`}
     ${pager(themePage, pages, 'prevTheme', 'nextTheme')}</div>`;
 }
 addEventListener('resize', () => { if (view === 'patient' && F.mode === 'home' && S) render(); });
@@ -521,6 +530,7 @@ $('#main').addEventListener('click', e => {
   if (view !== 'patient' || !S) return;
   const g = x => e.target.closest(x);
   let b;
+  if ((b = g('[data-browse]'))) { boardTheme = b.dataset.browse || null; themePage = 0; return render(); }
   if ((b = g('[data-item]'))) return startItem(b.dataset.th, b.dataset.item);
   if ((b = g('[data-top]'))) { const o = topCache[+b.dataset.top]; if (o) startItem(o.t.id, o.it.id); return; }
   if ((b = g('[data-cat]'))) { cat = b.dataset.cat; return render(); }
