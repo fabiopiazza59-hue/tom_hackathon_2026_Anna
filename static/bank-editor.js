@@ -4,7 +4,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const levelName = node => LEVEL_NAMES[LEVELS.indexOf(node.level)];
 
 export function createBankEditor({ getBank, mutate, rerender }) {
-  let editing = null, addingTo = null, search = '', armed = null;
+  let editing = null, addingTo = null, search = '', armed = null, saving = false;
   const show = () => rerender();
   const matches = node => !search || `${node.q} ${node.label} ${node.sourceId || ''}`.toLocaleLowerCase('fr').includes(search.toLocaleLowerCase('fr')) || node.children.some(matches);
 
@@ -39,7 +39,18 @@ export function createBankEditor({ getBank, mutate, rerender }) {
       ${index ? `<label class="fl wide">Phrase si Oui<textarea name="yesText" maxlength="600">${esc(node.yesText || '')}</textarea></label><label class="fl wide">Phrase si Non (facultative)<textarea name="noText" maxlength="600">${esc(node.noText || '')}</textarea></label>
       <label class="ck"><input name="centre" type="checkbox" ${node.centre !== false ? 'checked' : ''}> Au centre</label><label class="ck"><input name="domicile" type="checkbox" ${node.domicile !== false ? 'checked' : ''}> Au domicile</label>` : ''}
       <div class="row wide"><button class="btn primary" type="submit">Enregistrer</button><button class="btn" type="button" id="bank-cancel">Annuler</button><span id="bank-error" class="err" role="alert"></span></div>
-    </form></div>`;
+    </form><span id="bank-status" class="sr-only" role="status"></span></div>`;
+  }
+
+  function showSaving(root, value) {
+    saving = value;
+    const form = root.querySelector('#bank-form');
+    if (!form) return;
+    form.setAttribute('aria-busy', String(saving));
+    form.querySelectorAll('input, select, textarea, button').forEach(el => { el.disabled = saving; });
+    form.querySelector('[type="submit"]').textContent = saving ? 'Enregistrement en cours…' : 'Enregistrer';
+    root.querySelector('#bank-status').textContent = saving ? 'Enregistrement en cours…' : '';
+    root.querySelectorAll('#bank-search, [data-bank-edit], [data-bank-add], [data-bank-delete]').forEach(el => { el.disabled = saving; });
   }
 
   return {
@@ -63,11 +74,19 @@ export function createBankEditor({ getBank, mutate, rerender }) {
       });
       on('#bank-form', 'submit', async e => {
         e.preventDefault();
+        if (saving) return;
         const data = Object.fromEntries(new FormData(e.currentTarget));
         for (const key of ['centre', 'domicile']) data[key] = e.currentTarget.elements[key]?.checked ?? true;
-        const result = await mutate(editing ? 'save-node' : 'add-node', { ...data, id: editing, parentId: data.parentId || addingTo }, 'Question enregistrée');
+        showSaving(root, true);
+        let result;
+        try {
+          result = await mutate(editing ? 'save-node' : 'add-node', { ...data, id: editing, parentId: data.parentId || addingTo }, 'Question enregistrée');
+        } finally {
+          showSaving(root, false);
+        }
         if (result) { editing = addingTo = null; show(); }
       });
+      showSaving(root, saving);
     },
   };
 }
