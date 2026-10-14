@@ -1,10 +1,10 @@
 const questions = [
-  { category: '01 · Feeling comfortable', title: 'What helps you feel comfortable in a conversation?', hint: 'For example: more time to respond, short questions, writing instead of speaking, or a quiet space.' },
-  { category: '02 · Your everyday', title: 'What do you enjoy doing in your everyday life?', hint: 'Think about the people, activities, or little moments that matter to you.' },
-  { category: '03 · The obstacles', title: 'Is there something you would like to do that feels difficult or out of reach?', hint: 'It might be at home, when getting around, at work, at school, or somewhere else.' },
-  { category: '04 · What works for you', title: 'What already helps you do the things you want to do?', hint: 'This could be a tool, a person, an adjustment, or a way of doing things you have found yourself.' },
-  { category: '05 · A little change', title: 'If you could make one everyday thing easier, what would it be?', hint: 'Small changes count. Tell us what a better experience would look like for you.' },
-  { category: '06 · In your own words', title: 'Is there anything else you would like someone to understand?', hint: 'This is your space. Share anything we haven’t asked about, or leave this question blank.' }
+  { category: '01 · Se sentir à l’aise', title: 'Qu’est-ce qui t’aide à te sentir à l’aise dans une conversation ?', hint: 'Par exemple : plus de temps pour répondre, des questions courtes, écrire plutôt que parler ou un endroit calme.' },
+  { category: '02 · Ton quotidien', title: 'Qu’est-ce que tu aimes faire au quotidien ?', hint: 'Pense aux personnes, aux activités ou aux petits moments qui comptent pour toi.' },
+  { category: '03 · Les obstacles', title: 'Y a-t-il quelque chose que tu aimerais faire, mais qui te semble difficile ou inaccessible ?', hint: 'Cela peut être à la maison, dans tes déplacements, au travail, à l’école ou ailleurs.' },
+  { category: '04 · Ce qui t’aide', title: 'Qu’est-ce qui t’aide déjà à faire ce dont tu as envie ?', hint: 'Cela peut être un outil, une personne, un aménagement ou une façon de faire que tu as trouvée.' },
+  { category: '05 · Un petit changement', title: 'Si tu pouvais rendre une chose du quotidien plus facile, laquelle choisirais-tu ?', hint: 'Les petits changements comptent aussi. Explique ce qui te conviendrait mieux.' },
+  { category: '06 · Avec tes mots', title: 'Y a-t-il autre chose que tu aimerais que l’on comprenne ?', hint: 'Cet espace est le tien. Partage ce que tu souhaites ou passe cette question.' }
 ];
 let current = 0;
 let answers = questions.map(() => '');
@@ -20,10 +20,10 @@ function renderQuestion() {
   $('question-title').textContent = q.title;
   $('hint').textContent = q.hint;
   $('answer').value = answers[current];
-  $('step-label').textContent = `Question ${current + 1} of ${questions.length}`;
+  $('step-label').textContent = `Question ${current + 1} sur ${questions.length}`;
   $('progress').value = current + 1;
-  $('back').textContent = current === 0 ? 'Home' : 'Back';
-  $('next').textContent = current === questions.length - 1 ? 'See my answers →' : 'Continue →';
+  $('back').textContent = current === 0 ? 'Accueil' : 'Retour';
+  $('next').textContent = current === questions.length - 1 ? 'Voir les réponses →' : 'Continuer →';
   $('question-title').focus();
 }
 function summary() {
@@ -34,7 +34,7 @@ function summary() {
     const heading = document.createElement('h2');
     const answer = document.createElement('p');
     heading.textContent = q.title;
-    answer.textContent = answers[i].trim() || 'Skipped — nothing shared.';
+    answer.textContent = answers[i].trim() || 'Question passée — aucune réponse.';
     article.append(heading, answer);
     $('answers').append(article);
   });
@@ -48,13 +48,13 @@ $('back').onclick = () => { save(); if (current > 0) { current--; renderQuestion
 $('pause').onclick = () => { save(); show('break'); $('break').querySelector('h1').focus(); };
 $('resume').onclick = renderQuestion;
 $('edit').onclick = () => { current = 0; renderQuestion(); };
-$('restart').onclick = () => { if (window.confirm('Clear all your answers and start again? This cannot be undone.')) { answers = questions.map(() => ''); current = 0; $('answer').value = ''; $('answers').replaceChildren(); show('welcome'); $('start').focus(); } };
+$('restart').onclick = () => { if (window.confirm('Effacer toutes les réponses et recommencer ? Cette action est irréversible.')) { answers = questions.map(() => ''); current = 0; $('answer').value = ''; $('answers').replaceChildren(); show('welcome'); $('start').focus(); } };
 $('download').onclick = () => {
-  const text = 'Anna · My conversation\n\n' + questions.map((q, i) => `${q.title}\n${answers[i].trim() || '(Skipped)'}`).join('\n\n');
+  const text = 'Anna · Ma conversation\n\n' + questions.map((q, i) => `${q.title}\n${answers[i].trim() || '(Question passée)'}`).join('\n\n');
   const url = URL.createObjectURL(new Blob([text], {type: 'text/plain;charset=utf-8'}));
-  const link = document.createElement('a'); link.href = url; link.download = 'anna-my-conversation.txt'; link.click();
+  const link = document.createElement('a'); link.href = url; link.download = 'anna-ma-conversation.txt'; link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  $('announcement').textContent = 'Your answers are ready to download.';
+  $('announcement').textContent = 'Les réponses sont prêtes à être téléchargées.';
 };
 $('text-size').onclick = () => { const enabled = document.documentElement.classList.toggle('large'); $('text-size').setAttribute('aria-pressed', String(enabled)); };
 $('contrast').onclick = () => { const enabled = document.body.classList.toggle('high-contrast'); $('contrast').setAttribute('aria-pressed', String(enabled)); };
@@ -62,10 +62,10 @@ if (!('speechSynthesis' in window)) $('read').hidden = true;
 $('read').onclick = () => {
   stopReading();
   const message = new SpeechSynthesisUtterance(`${questions[current].title} ${questions[current].hint}`);
-  message.lang = 'en'; message.rate = 0.85;
-  const localVoice = speechSynthesis.getVoices().find(voice => voice.localService && voice.lang.startsWith('en'));
-  if (!localVoice) { $('announcement').textContent = 'An offline English voice is unavailable. You can use your screen reader to read this question.'; return; }
+  message.lang = 'fr-FR'; message.rate = 0.85;
+  const localVoice = speechSynthesis.getVoices().find(voice => voice.localService && voice.lang.startsWith('fr'));
+  if (!localVoice) { $('announcement').textContent = 'Aucune voix française hors ligne n’est disponible. Vous pouvez utiliser votre lecteur d’écran pour écouter cette question.'; return; }
   message.voice = localVoice;
-  message.onerror = () => { $('announcement').textContent = 'Audio is unavailable. The question is also shown as text.'; };
+  message.onerror = () => { $('announcement').textContent = 'La lecture audio est indisponible. La question est également affichée à l’écran.'; };
   speechSynthesis.speak(message);
 };
