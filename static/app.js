@@ -358,6 +358,7 @@ function render() {
   renderTop();
   const m = $('#main');
   $('#bar').hidden = view !== 'patient' || F.mode === 'home' || INTRO.includes(F.mode);
+  $('#bRepeat').hidden = view !== 'patient' || F.mode !== 'done' || !F.summaryText;
   m.classList.toggle('board-mode', view === 'patient' && F.mode === 'home');
   if (view === 'admin') { m.innerHTML = renderAdmin(); bindAdmin(); return; }
   m.innerHTML = F.mode === 'hello' ? renderHello() : F.mode === 'rest' ? renderRest() : F.mode === 'welcome' ? renderWelcome() : F.mode === 'hierarchy' ? renderBankQuestion() : F.mode === 'home' ? renderBoard() : F.mode === 'q' ? renderQ() : F.mode === 'done' ? renderDone() : F.mode === 'deeper' ? renderDeeper() : renderSpell();
@@ -559,6 +560,7 @@ $('#main').addEventListener('click', e => {
 $('#bYes').onclick = () => answer('oui');
 $('#bNo').onclick = () => answer('non');
 $('#bTalk').onclick = () => answer('parler');
+$('#bRepeat').onclick = () => { if (F.mode === 'done' && F.summaryText) speak(F.summaryText, true); };
 document.addEventListener('keydown', e => {
   if (!S || e.target.matches('input,textarea,select')) return;
   const k = e.key.toLowerCase();
