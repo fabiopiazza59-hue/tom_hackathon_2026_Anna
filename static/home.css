@@ -12,3 +12,5 @@
 
 a.primary{background:var(--green);color:#fff;border:1px solid var(--green);border-radius:8px;min-height:48px;padding:16px 25px;display:inline-flex;align-items:center;justify-content:center;gap:18px;text-decoration:none;font-weight:600}a.primary:hover{background:#183b29}
 @media(max-width:620px){a.primary{width:100%;padding:14px 16px;font-size:.95rem}}
+
+.home-qr{margin:20px 0 0}.home-qr img{display:block;width:180px;height:180px;max-width:100%;object-fit:contain;background:#fff}.home-qr figcaption{margin-top:6px;color:var(--muted);font-size:.85rem}
