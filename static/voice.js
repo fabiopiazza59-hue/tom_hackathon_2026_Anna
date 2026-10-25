@@ -4,15 +4,22 @@ export function createVoice({ fetch: request = globalThis.fetch, window: w = glo
   let phrases = new Map(), configured = false, ctx = null, current = null, token = 0, chain = Promise.resolve();
   const buffers = new Map();
 
-  // Les téléphones n’autorisent le son qu’après un geste : on débloque l’audio au premier toucher.
+  // Les navigateurs n’autorisent le son qu’après un geste. Au doigt, seul le moment où il se lève compte
+  // (pointerup, touchend, click) : pointerdown ne suffit qu’à la souris.
+  // Sur iPhone, « playback » fait aussi passer le son malgré le bouton silencieux, comme la voix du système.
+  try { if (w.navigator?.audioSession) w.navigator.audioSession.type = 'playback'; } catch { /* non pris en charge */ }
   const unlock = () => {
     try {
       ctx ||= new (w.AudioContext || w.webkitAudioContext)();
-      if (ctx.state === 'suspended') ctx.resume();
-    } catch { ctx = null; }
+      if (ctx.state !== 'running') {
+        ctx.resume();
+        // Anciens iPhone : jouer un son vide pendant le geste débloque définitivement l’audio.
+        const silent = ctx.createBufferSource();
+        silent.buffer = ctx.createBuffer(1, 1, 22050); silent.connect(ctx.destination); silent.start(0);
+      }
+    } catch { /* la voix du navigateur reste disponible */ }
   };
-  w.addEventListener?.('pointerdown', unlock, { capture: true });
-  w.addEventListener?.('keydown', unlock, { capture: true });
+  for (const type of ['pointerdown', 'pointerup', 'touchend', 'click', 'keydown']) w.addEventListener?.(type, unlock, { capture: true });
 
   async function load() {
     try {
@@ -35,8 +42,10 @@ export function createVoice({ fetch: request = globalThis.fetch, window: w = glo
     return buffers.get(key);
   }
 
-  function playRecorded(key, my) {
-    if (!ctx || ctx.state !== 'running') return Promise.reject(new Error('audio verrouillé'));
+  async function playRecorded(key, my) {
+    // Encore dans le geste qui vient de débloquer l’audio : laisser à la reprise le temps d’aboutir.
+    if (ctx && ctx.state === 'suspended') await Promise.race([ctx.resume().catch(() => {}), new Promise(r => setTimeout(r, 300))]);
+    if (!ctx || ctx.state !== 'running') throw new Error('audio verrouillé');
     return buffer(key).then(decoded => new Promise(resolve => {
       if (my !== token) return resolve();
       const source = ctx.createBufferSource();
