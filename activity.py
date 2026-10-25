@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 from pydantic import Field
 
 from shared_config import (
-    BlobConfigStore, FileConfigStore, ConfigConflict, ConfigUnavailable,
+    BlobConfigStore, FileConfigStore, blob_token, ConfigConflict, ConfigUnavailable,
     EMPTY_REVISION, ROOT, Snapshot, StrictModel,
 )
 
@@ -74,7 +74,7 @@ class FileActivityStore(ActivityDocument, FileConfigStore):
 
 
 def get_activity_store():
-    token = os.environ.get("BLOB_READ_WRITE_TOKEN")
+    token = blob_token()
     if token:
         return BlobActivityStore(token)
     if os.environ.get("VERCEL"):

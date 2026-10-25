@@ -20,7 +20,8 @@ def test_page_and_assets():
 
 
 def test_health():
-    assert client.get("/api/health").json() == {"status": "ok", "app": "anna"}
+    data = client.get("/api/health").json()
+    assert data["status"] == "ok" and data["app"] == "anna" and "storage" in data
 
 
 def test_no_answer_collection_endpoint():

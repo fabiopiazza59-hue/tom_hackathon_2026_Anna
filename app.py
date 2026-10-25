@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from typing import Annotated
 
 from pydantic import BaseModel, Field
-from shared_config import SharedConfig, ConfigConflict, ConfigUnavailable, get_config_store
+from shared_config import SharedConfig, ConfigConflict, ConfigUnavailable, get_config_store, storage_status
 from activity import InteractionBatch, append_events, get_activity_store
 from voices import KEY, MAX_PHRASE, VoiceUnavailable, get_voice_store, record, voice_settings
 
@@ -229,4 +229,4 @@ def voice_record(body: Phrases, store=Depends(get_voice_store)):
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok", "app": "anna"}
+    return JSONResponse({"status": "ok", "app": "anna", "storage": storage_status()}, headers={"Cache-Control": "no-store"})

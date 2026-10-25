@@ -13,7 +13,7 @@ from pathlib import Path
 
 import httpx
 
-from shared_config import ROOT, BlobConfigStore, ConfigUnavailable
+from shared_config import ROOT, BlobConfigStore, ConfigUnavailable, blob_token
 
 MODEL = "eleven_multilingual_v2"
 MAX_PHRASE = 600
@@ -133,7 +133,7 @@ class BlobVoiceStore:
 
 
 def get_voice_store():
-    token = os.environ.get("BLOB_READ_WRITE_TOKEN")
+    token = blob_token()
     if token:
         return BlobVoiceStore(token)
     if os.environ.get("VERCEL"):

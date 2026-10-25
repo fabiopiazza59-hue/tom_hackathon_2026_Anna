@@ -307,8 +307,44 @@ class BlobConfigStore:
         return Snapshot(config, etag)
 
 
+def blob_token_variables():
+    """Names of the Blob tokens Vercel added: BLOB_READ_WRITE_TOKEN, or another prefix chosen when connecting the store."""
+    return sorted(k for k, v in os.environ.items() if k.endswith("READ_WRITE_TOKEN") and v.strip().startswith("vercel_blob_rw_"))
+
+
+def blob_token():
+    token = os.environ.get("BLOB_READ_WRITE_TOKEN", "").strip()
+    if token:
+        return token
+    names = blob_token_variables()
+    # Only when there is no doubt about which store to use.
+    return os.environ[names[0]].strip() if len(names) == 1 else None
+
+
+def storage_status():
+    """What /api/health reports about the shared storage: variable names and Blob answers, never the token."""
+    token = blob_token()
+    if not token:
+        if not os.environ.get("VERCEL"):
+            return {"mode": "fichier local"}
+        return {"mode": "indisponible", "detail": "Aucun jeton Blob : connectez un magasin Blob privé au projet (Production) puis redéployez.",
+                "variables": blob_token_variables()}
+    try:
+        store = BlobConfigStore(token)
+    except ConfigUnavailable:
+        return {"mode": "indisponible", "detail": "Jeton Blob non reconnu.", "variables": blob_token_variables()}
+    try:
+        response = store.request("GET", store.url, params={"cache": "0"}, headers={"Authorization": f"Bearer {token}"})
+    except ConfigUnavailable:
+        return {"mode": "indisponible", "detail": "Magasin Blob injoignable."}
+    answers = {200: "configuration enregistrée", 404: "magasin vide, banque initiale utilisée"}
+    return {"mode": "blob" if response.status_code in answers else "indisponible",
+            "detail": answers.get(response.status_code, f"Le magasin Blob refuse la lecture ({response.status_code})."),
+            "variable": "BLOB_READ_WRITE_TOKEN" if os.environ.get("BLOB_READ_WRITE_TOKEN", "").strip() else blob_token_variables()[0]}
+
+
 def get_config_store():
-    token = os.environ.get("BLOB_READ_WRITE_TOKEN")
+    token = blob_token()
     if token:
         return BlobConfigStore(token)
     if os.environ.get("VERCEL"):
