@@ -13,7 +13,7 @@ from pathlib import Path
 
 import httpx
 
-from shared_config import ROOT, BlobConfigStore, ConfigUnavailable, blob_token
+from shared_config import ROOT, BlobConfigStore, ConfigUnavailable, blob_credentials
 
 MODEL = "eleven_multilingual_v2"
 MAX_PHRASE = 600
@@ -88,8 +88,8 @@ class FileVoiceStore:
 class BlobVoiceStore:
     """Private Vercel Blob, read through this server like the configuration."""
 
-    def __init__(self, token, transport=None):
-        self.blob = BlobConfigStore(token, transport)
+    def __init__(self, token, transport=None, store_id=None):
+        self.blob = BlobConfigStore(token, transport, store_id)
         self.base = self.blob.url.rsplit("/", 2)[0]
 
     def get(self, pathname):
@@ -102,7 +102,7 @@ class BlobVoiceStore:
         return response.content, response.headers.get("etag")
 
     def put(self, pathname, content, content_type, revision=None):
-        headers = {"Authorization": f"Bearer {self.blob.token}", "x-api-version": "13", "x-vercel-blob-access": "private",
+        headers = {"Authorization": f"Bearer {self.blob.token}", "x-vercel-blob-store-id": self.blob.store_id, "x-api-version": "13", "x-vercel-blob-access": "private",
                    "x-add-random-suffix": "0", "x-content-type": content_type, "x-allow-overwrite": "1"}
         if revision:
             headers["x-if-match"] = revision
@@ -133,9 +133,9 @@ class BlobVoiceStore:
 
 
 def get_voice_store():
-    token = blob_token()
-    if token:
-        return BlobVoiceStore(token)
+    credentials = blob_credentials()
+    if credentials:
+        return BlobVoiceStore(credentials[0], store_id=credentials[1])
     if os.environ.get("VERCEL"):
         raise ConfigUnavailable()
     return FileVoiceStore(os.environ.get("ANNA_VOICES_DIR", ROOT / "data" / "voices"))

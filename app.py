@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from typing import Annotated
 
 from pydantic import BaseModel, Field
-from shared_config import SharedConfig, ConfigConflict, ConfigUnavailable, get_config_store, storage_status
+from shared_config import REQUEST_OIDC_TOKEN, SharedConfig, ConfigConflict, ConfigUnavailable, get_config_store, storage_status
 from activity import InteractionBatch, append_events, get_activity_store
 from voices import KEY, MAX_PHRASE, VoiceUnavailable, get_voice_store, record, voice_settings
 
@@ -27,7 +27,12 @@ SESSION_SECONDS = 12 * 3600
 
 @app.middleware("http")
 async def response_headers(request: Request, call_next):
-    response = await call_next(request)
+    # On Vercel, each request carries a short-lived OIDC token that opens the connected Blob store.
+    oidc = REQUEST_OIDC_TOKEN.set(request.headers.get("x-vercel-oidc-token", "") if os.environ.get("VERCEL") else "")
+    try:
+        response = await call_next(request)
+    finally:
+        REQUEST_OIDC_TOKEN.reset(oidc)
     # Scripts import each other without version numbers: always revalidate so a deploy never mixes old and new files.
     if request.url.path.startswith("/static/") and request.url.path.endswith((".js", ".css", ".html")):
         response.headers["Cache-Control"] = "no-cache"

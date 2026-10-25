@@ -1,4 +1,5 @@
 """Shared question configuration, stored separately from interaction history."""
+from contextvars import ContextVar
 from dataclasses import dataclass
 import fcntl
 import hashlib
@@ -230,12 +231,15 @@ class BlobConfigStore:
     """
     pathname = "anna/config.json"
 
-    def __init__(self, token, transport=None):
+    def __init__(self, token, transport=None, store_id=None):
         self.token = token
-        parts = token.split("_")
-        if len(parts) < 5 or not parts[3].isalnum():
+        if store_id is None:
+            parts = token.split("_")
+            store_id = parts[3] if len(parts) >= 5 else ""
+        if not store_id.isalnum():
             raise ConfigUnavailable()
-        store_id = parts[3]
+        # Sent with every API call: an OIDC token doesn't name the store, unlike a read-write token.
+        self.store_id = store_id
         self.url = f"https://{store_id.lower()}.private.blob.vercel-storage.com/{self.pathname}"
         self.transport = transport
 
@@ -272,7 +276,7 @@ class BlobConfigStore:
 
     def write(self, config, revision):
         headers = {
-            "Authorization": f"Bearer {self.token}", "x-api-version": "13",
+            "Authorization": f"Bearer {self.token}", "x-vercel-blob-store-id": self.store_id, "x-api-version": "13",
             "x-vercel-blob-access": "private", "x-add-random-suffix": "0",
             "x-content-type": "application/json", "Content-Type": "application/json",
             "x-cache-control-max-age": "60",
@@ -312,6 +316,20 @@ def blob_token_variables():
     return sorted(k for k, v in os.environ.items() if k.endswith("READ_WRITE_TOKEN") and v.strip().startswith("vercel_blob_rw_"))
 
 
+# Vercel sends a short-lived OIDC token with each request (x-vercel-oidc-token); app.py keeps it here.
+REQUEST_OIDC_TOKEN = ContextVar("REQUEST_OIDC_TOKEN", default="")
+
+
+def blob_credentials():
+    """(token, store_id), like the official SDKs: Vercel OIDC with BLOB_STORE_ID first, else a read-write token."""
+    store_id = os.environ.get("BLOB_STORE_ID", "").strip().removeprefix("store_")
+    oidc = REQUEST_OIDC_TOKEN.get().strip() or os.environ.get("VERCEL_OIDC_TOKEN", "").strip()
+    if oidc and store_id:
+        return oidc, store_id
+    token = blob_token()
+    return (token, None) if token else None
+
+
 def blob_token():
     token = os.environ.get("BLOB_READ_WRITE_TOKEN", "").strip()
     if token:
@@ -323,16 +341,19 @@ def blob_token():
 
 def storage_status():
     """What /api/health reports about the shared storage: variable names and Blob answers, never the token."""
-    token = blob_token()
-    if not token:
+    credentials = blob_credentials()
+    store_id_set = bool(os.environ.get("BLOB_STORE_ID", "").strip())
+    if not credentials:
         if not os.environ.get("VERCEL"):
             return {"mode": "fichier local"}
-        return {"mode": "indisponible", "detail": "Aucun jeton Blob : connectez un magasin Blob privé au projet (Production) puis redéployez.",
-                "variables": blob_token_variables()}
+        detail = ("BLOB_STORE_ID présent mais aucun jeton OIDC reçu : vérifiez que OIDC Federation est activé (Settings → Security)."
+                  if store_id_set else "Aucun magasin Blob : connectez un magasin Blob privé au projet (Production) puis redéployez.")
+        return {"mode": "indisponible", "detail": detail, "variables": blob_token_variables() + (["BLOB_STORE_ID"] if store_id_set else [])}
+    token, store_id = credentials
     try:
-        store = BlobConfigStore(token)
+        store = BlobConfigStore(token, store_id=store_id)
     except ConfigUnavailable:
-        return {"mode": "indisponible", "detail": "Jeton Blob non reconnu.", "variables": blob_token_variables()}
+        return {"mode": "indisponible", "detail": "Identifiant de magasin Blob non reconnu.", "variables": blob_token_variables()}
     try:
         response = store.request("GET", store.url, params={"cache": "0"}, headers={"Authorization": f"Bearer {token}"})
     except ConfigUnavailable:
@@ -340,13 +361,13 @@ def storage_status():
     answers = {200: "configuration enregistrée", 404: "magasin vide, banque initiale utilisée"}
     return {"mode": "blob" if response.status_code in answers else "indisponible",
             "detail": answers.get(response.status_code, f"Le magasin Blob refuse la lecture ({response.status_code})."),
-            "variable": "BLOB_READ_WRITE_TOKEN" if os.environ.get("BLOB_READ_WRITE_TOKEN", "").strip() else blob_token_variables()[0]}
+            "auth": "OIDC (BLOB_STORE_ID)" if store_id else "BLOB_READ_WRITE_TOKEN" if os.environ.get("BLOB_READ_WRITE_TOKEN", "").strip() else blob_token_variables()[0]}
 
 
 def get_config_store():
-    token = blob_token()
-    if token:
-        return BlobConfigStore(token)
+    credentials = blob_credentials()
+    if credentials:
+        return BlobConfigStore(credentials[0], store_id=credentials[1])
     if os.environ.get("VERCEL"):
         raise ConfigUnavailable()
     return FileConfigStore(os.environ.get("ANNA_CONFIG_FILE", ROOT / "data" / "config.local.json"))

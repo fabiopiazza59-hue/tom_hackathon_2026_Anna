@@ -81,7 +81,7 @@ def backup(store, config, stamp):
     if isinstance(store, BlobConfigStore):
         class Archive(BlobConfigStore):
             pathname = f"anna/backups/config-before-texts-{stamp}.json"
-        Archive(store.token).write(config, EMPTY_REVISION)
+        Archive(store.token, store_id=store.store_id).write(config, EMPTY_REVISION)
         return Archive.pathname
     path = (store.path.with_name(f"{store.path.stem}.backup-texts-{stamp}{store.path.suffix}") if isinstance(store, FileConfigStore)
             else ROOT / "data" / f"config.local.backup-texts-{stamp}.json")

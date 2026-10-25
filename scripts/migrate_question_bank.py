@@ -35,7 +35,7 @@ def migrate(store, source, apply=False):
     if isinstance(store, BlobConfigStore):
         class Archive(BlobConfigStore):
             pathname = f"anna/backups/config-before-{new['bank']['version']}-{stamp}.json"
-        archive = Archive(store.token)
+        archive = Archive(store.token, store_id=store.store_id)
         archive.write(snapshot.config, EMPTY_REVISION)
         backup = archive.pathname
     else:
