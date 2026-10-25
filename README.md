@@ -23,7 +23,7 @@ Oui descend au niveau suivant ; Non passe à l’élément suivant du même nive
 
 Les catégories suivent `ordre_si_oui` ou `ordre_si_non` après la réponse à « Ça va ? », avec repli sur `ordre`. Les sous-catégories respectent `branche_oui_non`. Chaque niveau suit ensuite son `ordre` ; les valeurs vides viennent après les valeurs renseignées et conservent l’ordre d’import. Les égalités gardent également l’ordre d’import.
 
-Les cinq CSV sont dans `data/questions/` : **6 catégories, 27 sous-catégories, 99 questions, 120 sous-questions et 42 personnes**. Les anciens CSV restent archivés dans `data/questions/legacy/`. L’import valide les identifiants, parents, personnes et liens de contraire :
+Les CSV sont dans `data/questions/` : **6 catégories, 27 sous-catégories, 99 questions, 120 sous-questions et 42 personnes**. Les anciens CSV restent archivés dans `data/questions/legacy/`. La colonne `libelle` donne le texte court des tuiles et du fil d’Ariane ; vide, il est déduit de l’identifiant. `suivi.csv` liste les questions de suivi proposées à l’entourage une fois un besoin trouvé (`element_id` = l’élément concerné, par exemple `subcat:douleur` ; modifiables ensuite dans l’admin). L’import valide les identifiants, parents, personnes et liens de contraire :
 
 ```sh
 python3 scripts/import_questions.py
@@ -47,13 +47,19 @@ Au premier chargement de l’admin, si le stockage partagé est vide, la banque 
 
 L’historique conserve les **300 derniers échanges** et les **2 000 dernières réponses détaillées**. Les statistiques par question sont cumulatives : nombre de réponses, Oui/Non, temps cumulé et heures habituelles des Oui (heure de Paris). Le Top 3 s’appuie sur le taux de Oui (50 %), l’usage relatif (30 %) et la rapidité (20 %), avec un bonus pour l’heure habituelle. Après les questions épinglées actives, il propose un besoin par thème prioritaire selon les ordres et branches de la banque. Le parcours complet conserve toujours les ordres explicites. Les statistiques d’ouverture ne biaisent pas le score d’usage des questions.
 
-Le serveur Python conserve FastAPI et les mêmes identifiants. `GET /api/config` fournit la banque ; `PUT /api/config`, `/admin`, `/api/admin-session` et **`GET /api/history`** sont protégés par HTTP Basic. `POST /api/interactions` reçoit les événements validés et `GET /api/usage` ne fournit que les statistiques agrégées pour le Top 3. Aucun texte d’échange ni réponse individuelle n’est accessible via cet endpoint public. La configuration refuse toujours les champs d’interactions.
+Le serveur Python conserve FastAPI et les mêmes identifiants. `GET /api/config` fournit la banque ; `PUT /api/config`, `/admin`, `/api/admin-session` et **`GET /api/history`** sont protégés : `/admin` affiche un formulaire de connexion (`POST /api/admin-login`) qui ouvre une session de 12 h par cookie signé (HttpOnly, SameSite=Strict) ; HTTP Basic reste accepté pour les scripts. `POST /api/interactions` reçoit les événements validés et `GET /api/usage` ne fournit que les statistiques agrégées pour le Top 3. Aucun texte d’échange ni réponse individuelle n’est accessible via cet endpoint public. La configuration refuse toujours les champs d’interactions.
 
 Chaque écriture de configuration exige la version affichée (`If-Match`) ; une modification concurrente est refusée avec un message demandant de recharger. Les écritures d’usages utilisent aussi une condition de version et sont fusionnées après conflit afin de conserver les réponses de plusieurs utilisateurs. Les lectures contournent le cache du stockage pour refléter les enregistrements.
 
-Définir `ADMIN_USERNAME`, `ADMIN_PASSWORD` et `BLOB_READ_WRITE_TOKEN` dans les variables de production Vercel. La connexion au magasin privé `anna-shared-questions` fournit le jeton Blob. Les valeurs ne sont jamais dans GitHub ni envoyées au navigateur. Sans stockage configuré en production, le serveur renvoie une erreur au lieu de prétendre enregistrer dans un fichier temporaire. Le navigateur peut conserver l’authentification jusqu’à sa fermeture.
+Définir `ADMIN_USERNAME`, `ADMIN_PASSWORD` et `BLOB_READ_WRITE_TOKEN` dans les variables de production Vercel. La connexion au magasin privé `anna-shared-questions` fournit le jeton Blob. Les valeurs ne sont jamais dans GitHub ni envoyées au navigateur. Sans stockage configuré en production, le serveur renvoie une erreur au lieu de prétendre enregistrer dans un fichier temporaire. L’identifiant ne tient pas compte des majuscules ni des espaces autour ; les espaces ou retours à la ligne collés dans Vercel sont ignorés. Après un changement de variable dans Vercel, redéployer pour l’appliquer ; changer le mot de passe déconnecte toutes les sessions. « Se déconnecter » est en haut de l’admin.
 
-Les polices viennent de Google Fonts et le modèle de caméra de MediaPipe/Google. La synthèse vocale utilise les voix disponibles sur l’appareil. Vercel conserve ses métadonnées habituelles de requêtes.
+Les polices viennent de Google Fonts et le modèle de caméra de MediaPipe/Google.
+
+### Voix naturelle
+
+Les phrases fixes (questions, Oui / Non, phrases d’Anna, questions de suivi, Entourage, épellation : environ 820 phrases, 25 000 caractères) sont **pré-enregistrées avec ElevenLabs** depuis Admin → Réglages → « Voix naturelle ». L’application joue l’enregistrement quand il existe et utilise sinon la voix de l’appareil (Chrome), y compris si le téléchargement ou la lecture échoue. Les messages épelés et autres textes libres ne sont jamais envoyés à ElevenLabs. Après une modification de question, revenir sur « Voix naturelle » pour enregistrer les nouvelles phrases.
+
+Variables Vercel (production) : `ELEVENLABS_API_KEY` et `ELEVENLABS_VOICE_ID` (une voix française choisie dans la Voice Library d’ElevenLabs, ajoutée à « My Voices », dont on copie l’identifiant), `ELEVENLABS_MODEL` facultatif (`eleven_multilingual_v2` par défaut). Changer de voix ou de modèle demande un nouvel enregistrement. Les fichiers sont stockés dans le magasin Blob privé (`anna/voices/`) et servis par `GET /api/voices/<clé>.mp3` ; en local, dans `data/voices/` (ignoré par Git). La clé ElevenLabs ne sert qu’à l’enregistrement depuis l’admin, jamais pendant une conversation. Vercel conserve ses métadonnées habituelles de requêtes.
 
 ## Développement
 
@@ -88,3 +94,12 @@ Pour remplacer une banque existante par les nouveaux CSV, déployer d’abord le
 ```
 
 La migration archive la configuration précédente dans le stockage privé avant de remplacer la banque et les personnes par les CSV. Elle conserve la question de départ, les réglages, l’historique et les statistiques. Une version CSV déjà importée n’est pas réappliquée, afin de préserver les modifications ultérieures de l’admin.
+
+Pour appliquer seulement les libellés et les questions de suivi des CSV à une banque existante, sans toucher au reste (essai à blanc par défaut, sauvegarde avant écriture ; ce qui a été modifié dans l’admin est conservé). Déployer d’abord le code, le site refusant sinon les questions de suivi :
+
+```sh
+uv run python scripts/update_bank_texts.py --url https://tom-hackathon-2026-anna.vercel.app
+uv run python scripts/update_bank_texts.py --url https://tom-hackathon-2026-anna.vercel.app --apply
+```
+
+`--apply` demande l’identifiant admin. `--env-file .env.local` utilise à la place le jeton Blob, comme la migration.

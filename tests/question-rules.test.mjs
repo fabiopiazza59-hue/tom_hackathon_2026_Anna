@@ -70,3 +70,9 @@ test('une modification admin des personnes et des nouvelles colonnes se retrouve
   assert.equal(findEntry(data.bank, 'q:repas').node.peakHours, '12-14');
   await assert.rejects(api('POST', '/api/admin?action=delete-person', { id: 'roxane' }));
 });
+
+test('une personne en pause disparaît des questions qui lui sont liées', () => {
+  const paused = people.map(p => p.id === 'laureen' ? { ...p, paused: true } : p);
+  assert.ok(findEntry(prepareBank(QUESTION_BANK, people, saturday), 'subq:voir_laureen'));
+  assert.ok(!findEntry(prepareBank(QUESTION_BANK, paused, saturday), 'subq:voir_laureen'));
+});

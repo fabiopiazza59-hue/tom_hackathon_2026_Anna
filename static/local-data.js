@@ -130,6 +130,10 @@ export function createLocalApi({ storage, authorize }) {
       const oppositeId = body.oppositeId === '' ? null : body.oppositeId ?? node.oppositeId ?? null;
       if (oppositeId && (oppositeId === node.id || findEntry(db.bank, oppositeId)?.node.level !== level)) fail('Question contraire invalide');
       Object.assign(node, { weight, days, peakHours, pinned: body.pinned ?? node.pinned ?? false, weekendOrder: order(body.weekendOrder ?? node.weekendOrder), personId, oppositeId });
+      // Une question de suivi par ligne, proposée à l’entourage une fois ce besoin trouvé.
+      const followUps = typeof body.followUps === 'string' ? body.followUps.split('\n').map(s => s.trim()).filter(Boolean) : body.followUps ?? node.followUps ?? [];
+      if (!Array.isArray(followUps) || followUps.length > 20 || followUps.some(q => typeof q !== 'string' || q.length > 300)) fail('Questions de suivi : 20 au maximum, 300 caractères chacune');
+      node.followUps = followUps;
       if (!existing) parent.children.push(node);
       else if (parent && parent !== existing.parent) {
         existing.parent.children = existing.parent.children.filter(n => n.id !== node.id);
@@ -153,7 +157,9 @@ export function createLocalApi({ storage, authorize }) {
       person.days = text(body.days ?? old?.days ?? '', 120, true);
       person.weight = Number(body.weight ?? old?.weight ?? 1);
       if (!validDays(person.days) || !Number.isFinite(person.weight) || person.weight < 0) fail('Jours ou poids invalides');
-      for (const flag of ['groupClose', 'groupCare', 'groupCentre', 'canContact', 'canSee', 'canTalk', 'referent']) person[flag] = body[flag] ?? old?.[flag] ?? flag.startsWith('can');
+      for (const flag of ['groupClose', 'groupCare', 'groupCentre', 'canContact', 'canSee', 'canTalk', 'referent', 'paused']) person[flag] = body[flag] ?? old?.[flag] ?? flag.startsWith('can');
+      person.photo = body.photo ?? old?.photo ?? '';
+      if (typeof person.photo !== 'string' || person.photo.length > 60000 || !/^(data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2})?$/.test(person.photo)) fail('Photo invalide : choisissez une autre image');
       if (old) {
         const rename = node => {
           if (node.personId === id) for (const key of ['label', 'q', 'yesText', 'noText']) {

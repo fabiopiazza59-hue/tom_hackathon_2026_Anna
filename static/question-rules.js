@@ -51,7 +51,7 @@ export function prepareBank(bank, people = [], date = new Date(), context = 'tou
     if (time.weekend && node.weekendOrder != null) node.order = node.weekendOrder;
     if (node.personId) {
       const p = byId.get(node.personId);
-      if (!p || !availableDay(p.days, time)) return null;
+      if (!p || p.paused || !availableDay(p.days, time)) return null;
       if ((action === 'contacter' && p.canContact === false) || (action === 'voir' && p.canSee === false) || (action === 'parler' && p.canTalk === false)) return null;
       if ((group === 'homme' && p.gender !== 'H') || (group === 'femme' && p.gender !== 'F') || (group === 'referent' && !p.referent)) return null;
       if (group === 'infirmiere' && !p.groupCare && !normalize(p.role).includes('infirmi')) return null;

@@ -44,6 +44,7 @@ export function createBankEditor({ getBank, getPeople = () => [], mutate, rerend
         ${node.level === 'question' ? `${input('Créneaux horaires (ex. 8-10;12-13)', 'peakHours')}<label class="ck"><input name="pinned" type="checkbox" ${node.pinned ? 'checked' : ''}> Épingler au Top 3 pendant ces créneaux</label>` : ''}` : ''}
       ${index ? `<label class="fl wide">Phrase si Oui<textarea name="yesText" maxlength="600">${esc(node.yesText || '')}</textarea></label><label class="fl wide">Phrase si Non (facultative)<textarea name="noText" maxlength="600">${esc(node.noText || '')}</textarea></label>
       <label class="ck"><input name="centre" type="checkbox" ${node.centre !== false ? 'checked' : ''}> Au centre</label><label class="ck"><input name="domicile" type="checkbox" ${node.domicile !== false ? 'checked' : ''}> Au domicile</label>` : ''}
+      ${index ? `<label class="fl wide">Questions de suivi, une par ligne (proposées à l’entourage une fois ce besoin trouvé)<textarea name="followUps" rows="4">${esc((node.followUps || []).join('\n'))}</textarea></label>` : ''}
       <div class="row wide"><button class="btn primary" type="submit">Enregistrer</button><button class="btn" type="button" id="bank-cancel">Annuler</button><span id="bank-error" class="err" role="alert"></span></div>
     </form><span id="bank-status" class="sr-only" role="status"></span></div>`;
   }

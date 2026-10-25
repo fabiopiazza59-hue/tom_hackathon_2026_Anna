@@ -141,7 +141,7 @@ def test_blob_initialization_race_is_reported_as_a_conflict():
         store.write(default_config(), '"empty"')
 
 
-@pytest.mark.parametrize("field,value", [("days", "n’importe quand"), ("peakHours", "25-30"), ("weight", -1.5), ("personId", "unknown-person"), ("oppositeId", "q:missing")])
+@pytest.mark.parametrize("field,value", [("followUps", ["Q ?"] * 21), ("followUps", [""]), ("days", "n’importe quand"), ("peakHours", "25-30"), ("weight", -1.5), ("personId", "unknown-person"), ("oppositeId", "q:missing")])
 def test_invalid_new_question_rules_cannot_be_saved(shared_store, field, value):
     client = TestClient(app)
     data = client.get("/api/config").json()
@@ -150,3 +150,22 @@ def test_invalid_new_question_rules_cannot_be_saved(shared_store, field, value):
     response = client.put("/api/config", json=data["config"], auth=AUTH, headers={"If-Match": data["revision"]})
     assert response.status_code == 422
     assert not shared_store.exists()
+
+
+@pytest.mark.parametrize("photo", ["data:image/svg+xml;base64,PHN2Zz4=", "javascript:alert(1)", "data:image/jpeg;base64," + "A" * 60_000])
+def test_only_small_jpeg_photos_can_be_saved(shared_store, photo):
+    client = TestClient(app)
+    data = client.get("/api/config").json()
+    data["config"]["people"][0]["photo"] = photo
+    response = client.put("/api/config", json=data["config"], auth=AUTH, headers={"If-Match": data["revision"]})
+    assert response.status_code == 422
+    assert not shared_store.exists()
+
+
+def test_photo_and_pause_are_shared_with_public_pages(shared_store):
+    client = TestClient(app)
+    data = client.get("/api/config").json()
+    data["config"]["people"][0] |= {"photo": "data:image/jpeg;base64,/9j/4AAQ", "paused": True}
+    assert client.put("/api/config", json=data["config"], auth=AUTH, headers={"If-Match": data["revision"]}).status_code == 200
+    person = TestClient(app).get("/api/config").json()["config"]["people"][0]
+    assert person["photo"] == "data:image/jpeg;base64,/9j/4AAQ" and person["paused"] is True

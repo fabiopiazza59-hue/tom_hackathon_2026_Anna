@@ -1,28 +1,28 @@
-id,categorie_id,ordre,question,phrase_oui,phrase_non,branche_oui_non,centre,domicile
-douleur,corps,1,Tu as mal quelque part ?,"J'ai mal, mais je n'arrive pas à dire où.",,non,TRUE,TRUE
-installation,corps,2,Tu veux changer de position ?,Je voudrais changer de position.,,non,TRUE,TRUE
-gene,corps,3,Quelque chose te gêne ?,"Quelque chose me gêne, mais je n'arrive pas à dire quoi.",,non,TRUE,TRUE
-manger,corps,4,Tu aurais envie de manger quelque chose ?,"J'ai envie de manger quelque chose, mais je ne sais pas dire quoi.",,les_deux,TRUE,TRUE
-boire,corps,5,Tu aurais envie de boire quelque chose ?,"J'ai envie de boire quelque chose, mais je ne sais pas dire quoi.",,les_deux,TRUE,TRUE
-repos,corps,6,Tu es fatiguée ?,Je suis fatiguée.,,les_deux,TRUE,TRUE
-bien,ressenti,1,Tu veux juste dire que tout va bien ?,"Tout va bien, je suis contente.",,oui,TRUE,TRUE
-difficile,ressenti,2,Tu ressens quelque chose de difficile ?,Je ressens quelque chose de difficile.,,non,TRUE,TRUE
-ennui,ressenti,3,Tu t'ennuies ?,Je m'ennuie.,,non,TRUE,TRUE
-probleme,ressenti,4,Tu as un problème ?,J'ai un problème.,,non,TRUE,TRUE
-contacter,autres,1,Tu veux contacter quelqu'un ?,Je voudrais contacter quelqu'un.,,les_deux,TRUE,TRUE
-voir,autres,2,Tu veux voir quelqu'un ?,Je voudrais voir quelqu'un.,,les_deux,TRUE,TRUE
-parler,autres,3,Tu veux parler à quelqu'un ?,Je voudrais parler à quelqu'un.,,les_deux,TRUE,TRUE
-compagnie,autres,4,Tu veux de la compagnie ?,Je voudrais de la compagnie.,,les_deux,TRUE,TRUE
-seule,autres,5,Tu veux être seule ?,Je voudrais être seule.,,les_deux,TRUE,TRUE
-ecouter_regarder,activites,1,Tu aimerais écouter quelque chose ?,J'aimerais écouter quelque chose.,,les_deux,TRUE,TRUE
-detente,activites,2,Tu aimerais un moment de détente ?,J'aimerais un moment de détente.,,les_deux,TRUE,TRUE
-ateliers,activites,3,Tu aimerais faire un atelier ?,J'aimerais faire un atelier.,,les_deux,TRUE,FALSE
-balade,activites,4,Tu aimerais te balader ?,J'aimerais me balader.,,les_deux,TRUE,TRUE
-sorties,activites,5,Tu aimerais faire une sortie ?,J'aimerais faire une sortie.,,les_deux,TRUE,TRUE
-animaux,activites,6,Tu aimerais voir les animaux ?,J'aimerais voir les animaux.,,les_deux,TRUE,FALSE
-evenements,activites,7,Tu aimerais participer à un événement ?,J'aimerais participer à un événement.,,les_deux,TRUE,TRUE
-vacances,activites,8,Tu aimerais partir en vacances ?,J'aimerais partir en vacances.,,les_deux,TRUE,TRUE
-raconter,dire,1,Tu veux me raconter quelque chose ?,Je voudrais raconter quelque chose.,,les_deux,TRUE,TRUE
-savoir,dire,2,Tu veux savoir quelque chose ?,Je voudrais savoir quelque chose.,,les_deux,TRUE,TRUE
-mes_affaires,accord,1,C'est à propos de chez toi ?,C'est à propos de chez moi.,,les_deux,TRUE,TRUE
-mon_corps_accord,accord,2,C'est à propos de ton corps ?,C'est à propos de mon corps.,,les_deux,TRUE,TRUE
+id,categorie_id,ordre,question,libelle,phrase_oui,phrase_non,branche_oui_non,centre,domicile
+douleur,corps,1,Tu as mal quelque part ?,Douleur,"J'ai mal, mais je n'arrive pas à dire où.",,non,TRUE,TRUE
+installation,corps,2,Tu veux changer de position ?,,Je voudrais changer de position.,,non,TRUE,TRUE
+gene,corps,3,Quelque chose te gêne ?,,"Quelque chose me gêne, mais je n'arrive pas à dire quoi.",,non,TRUE,TRUE
+manger,corps,4,Tu aurais envie de manger quelque chose ?,Manger,"J'ai envie de manger quelque chose, mais je ne sais pas dire quoi.",,les_deux,TRUE,TRUE
+boire,corps,5,Tu aurais envie de boire quelque chose ?,Boire,"J'ai envie de boire quelque chose, mais je ne sais pas dire quoi.",,les_deux,TRUE,TRUE
+repos,corps,6,Tu es fatiguée ?,Repos,Je suis fatiguée.,,les_deux,TRUE,TRUE
+bien,ressenti,1,Tu veux juste dire que tout va bien ?,,"Tout va bien, je suis contente.",,oui,TRUE,TRUE
+difficile,ressenti,2,Tu ressens quelque chose de difficile ?,,Je ressens quelque chose de difficile.,,non,TRUE,TRUE
+ennui,ressenti,3,Tu t'ennuies ?,Ennui,Je m'ennuie.,,non,TRUE,TRUE
+probleme,ressenti,4,Tu as un problème ?,,J'ai un problème.,,non,TRUE,TRUE
+contacter,autres,1,Tu veux contacter quelqu'un ?,Contacter,Je voudrais contacter quelqu'un.,,les_deux,TRUE,TRUE
+voir,autres,2,Tu veux voir quelqu'un ?,,Je voudrais voir quelqu'un.,,les_deux,TRUE,TRUE
+parler,autres,3,Tu veux parler à quelqu'un ?,,Je voudrais parler à quelqu'un.,,les_deux,TRUE,TRUE
+compagnie,autres,4,Tu veux de la compagnie ?,Compagnie,Je voudrais de la compagnie.,,les_deux,TRUE,TRUE
+seule,autres,5,Tu veux être seule ?,,Je voudrais être seule.,,les_deux,TRUE,TRUE
+ecouter_regarder,activites,1,Tu aimerais écouter quelque chose ?,,J'aimerais écouter quelque chose.,,les_deux,TRUE,TRUE
+detente,activites,2,Tu aimerais un moment de détente ?,,J'aimerais un moment de détente.,,les_deux,TRUE,TRUE
+ateliers,activites,3,Tu aimerais faire un atelier ?,Ateliers,J'aimerais faire un atelier.,,les_deux,TRUE,FALSE
+balade,activites,4,Tu aimerais te balader ?,Balade,J'aimerais me balader.,,les_deux,TRUE,TRUE
+sorties,activites,5,Tu aimerais faire une sortie ?,Sorties,J'aimerais faire une sortie.,,les_deux,TRUE,TRUE
+animaux,activites,6,Tu aimerais voir les animaux ?,Animaux,J'aimerais voir les animaux.,,les_deux,TRUE,FALSE
+evenements,activites,7,Tu aimerais participer à un événement ?,,J'aimerais participer à un événement.,,les_deux,TRUE,TRUE
+vacances,activites,8,Tu aimerais partir en vacances ?,Vacances,J'aimerais partir en vacances.,,les_deux,TRUE,TRUE
+raconter,dire,1,Tu veux me raconter quelque chose ?,Raconter,Je voudrais raconter quelque chose.,,les_deux,TRUE,TRUE
+savoir,dire,2,Tu veux savoir quelque chose ?,Savoir,Je voudrais savoir quelque chose.,,les_deux,TRUE,TRUE
+mes_affaires,accord,1,C'est à propos de chez toi ?,,C'est à propos de chez moi.,,les_deux,TRUE,TRUE
+mon_corps_accord,accord,2,C'est à propos de ton corps ?,,C'est à propos de mon corps.,,les_deux,TRUE,TRUE

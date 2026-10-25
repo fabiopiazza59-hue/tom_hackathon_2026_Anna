@@ -20,6 +20,11 @@ LABELS = {
 ICONS = {"corps": "position", "ressenti": "emotions", "autres": "personnes", "activites": "activites", "dire": "interaction", "accord": "yes"}
 
 
+def auto_label(source_id):
+    """Label used before the CSV « libelle » column existed: a known name, else the id."""
+    return LABELS.get(source_id, source_id.replace("_", " ").capitalize())
+
+
 def number(value):
     if not value.strip():
         return None
@@ -87,6 +92,11 @@ def import_bank(source):
         fingerprint.update(csv_path(source, stem).read_bytes())
     if people:
         fingerprint.update(csv_path(source, "personnes").read_bytes())
+    try:
+        follow_up_rows = read_rows(source, "suivi")
+        fingerprint.update(csv_path(source, "suivi").read_bytes())
+    except FileNotFoundError:
+        follow_up_rows = []
     bank = {"version": f"csv-v2-{fingerprint.hexdigest()[:12]}", "schemaVersion": 2, "root": root, "counts": {}}
     parents = {"": root}
     specs = [
@@ -108,7 +118,7 @@ def import_bank(source):
                 raise ValueError(f"Parent introuvable pour {row['id']} : {parent_id}")
             node = {
                 "id": f"{prefix}:{row['id']}", "sourceId": row["id"], "level": level,
-                "label": LABELS.get(row["id"], row["id"].replace("_", " ").capitalize()),
+                "label": (row.get("libelle") or "").strip() or auto_label(row["id"]),
                 "q": row["question"], "order": number(row.get("ordre", "")),
                 "yesText": row.get("phrase_oui", ""), "noText": row.get("phrase_non", ""),
                 "centre": boolean(row.get("centre")), "domicile": boolean(row.get("domicile")),
@@ -140,6 +150,11 @@ def import_bank(source):
     def flatten(node):
         return [node, *(n for c in node["children"] for n in flatten(c))]
     nodes = {n["id"]: n for n in flatten(root)}
+    # Questions de suivi : proposées à l’entourage une fois le besoin trouvé.
+    for row in sorted(follow_up_rows, key=lambda r: (number(r.get("ordre", "")) is None, number(r.get("ordre", "")) or 0)):
+        if row["element_id"] not in nodes or not row["question"].strip():
+            raise ValueError(f"Question de suivi invalide : {row['id']} ({row['element_id']})")
+        nodes[row["element_id"]].setdefault("followUps", []).append(row["question"].strip())
     for node in nodes.values():
         opposite = node.get("oppositeId")
         if opposite and (opposite not in nodes or opposite == node["id"] or nodes[opposite]["level"] != node["level"]):

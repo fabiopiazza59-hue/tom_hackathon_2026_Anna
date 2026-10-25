@@ -33,3 +33,15 @@ def test_csv_migration_archives_bank_and_preserves_settings_history_and_later_ad
     store.write(new.config, new.revision)
     assert migrate(store, ROOT / "data/questions", apply=True)["status"] == "already-migrated"
     assert store.read().config["bank"]["root"]["q"] == "Édition après migration ?"
+
+
+def test_csv_migration_keeps_photos_and_pauses_set_in_the_admin(tmp_path):
+    old = import_bank(ROOT / "data/questions/legacy")
+    old["version"] = "old-csv-v1"
+    store = FileConfigStore(tmp_path / "config.json")
+    photo = "data:image/jpeg;base64,/9j/4AAQ"
+    store.write({"bank": old, "people": [{"id": "maman", "name": "maman", "kind": "Famille", "photo": photo, "paused": True}]}, '"empty"')
+    migrate(store, ROOT / "data/questions", apply=True)
+    people = {p["id"]: p for p in store.read().config["people"]}
+    assert people["maman"]["photo"] == photo and people["maman"]["paused"] is True
+    assert people["papa"]["photo"] == "" and people["papa"]["paused"] is False

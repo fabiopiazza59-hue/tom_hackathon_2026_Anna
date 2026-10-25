@@ -60,11 +60,20 @@ export function startAtHierarchy(bank, id, { context = 'tous', answer = null } =
   state.current = entry.node;
   state.path = ancestors.filter(n => n.level !== 'master' || answer).map(n => ({ ...n, response: n.level === 'master' ? answer : 'oui' }));
   state.selected = ancestors.filter(n => n.level !== 'master');
-  const siblings = availableChildren(entry.parent, answer, context);
+  // Un élément choisi explicitement reste proposé, même si la réponse à « Ça va ? » masque sa branche.
+  let siblings = availableChildren(entry.parent, answer, context);
+  if (!siblings.some(n => n.id === id)) siblings = availableChildren(entry.parent, null, context);
   const index = siblings.findIndex(n => n.id === id);
   if (index < 0) return startHierarchy(bank, { context });
   state.frames = [{ nodes: siblings, index }];
   return state;
+}
+
+// Depuis la page d’un thème, il est déjà choisi : on ne parcourt que son contenu, sans passer aux thèmes voisins.
+export function startInsideHierarchy(bank, id, options = {}) {
+  const state = startAtHierarchy(bank, id, options);
+  if (state.current.id !== id || !availableChildren(state.current, state.answer, state.context).length) return state;
+  return answerHierarchy(bank, state, 'oui');
 }
 
 export function answerHierarchy(bank, previous, answer) {
@@ -109,6 +118,17 @@ export function answerHierarchy(bank, previous, answer) {
     }
   }
   return state;
+}
+
+// Questions de suivi du besoin trouvé, du plus précis (la question) au plus général (la catégorie).
+export function followUpsFor(state, limit = 6) {
+  if (!state?.done || !state.result?.found) return [];
+  const seen = new Set(), list = [];
+  for (const node of [...state.path].reverse()) {
+    if (node.level === 'master') continue;
+    (node.followUps || []).forEach((q, i) => { if (!seen.has(q)) { seen.add(q); list.push({ id: `${node.id}#${i + 1}`, q }); } });
+  }
+  return list.slice(0, limit);
 }
 
 function finish(state, found, text) {

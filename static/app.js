@@ -1,12 +1,15 @@
 import { createHeadTracker } from './head-tracking.js';
 import { createSharedApi } from './shared-data.js';
-import { startHierarchy, startAtHierarchy, answerHierarchy, availableChildren, orderedNodes, findEntry, LEVEL_NAMES, LEVELS } from './hierarchy.js';
+import { startHierarchy, startAtHierarchy, startInsideHierarchy, answerHierarchy, followUpsFor, availableChildren, orderedNodes, findEntry, LEVEL_NAMES, LEVELS } from './hierarchy.js';
 import { createBankEditor } from './bank-editor.js';
 import { createPeopleEditor } from './people-editor.js';
 import { createActivity } from './activity.js';
 import { themeOrder, topQuestions } from './recommendations.js';
 import { calendar } from './question-rules.js';
 import { categoryRows, nodeIcon } from './bank-board.js';
+import { aboutText, orderedPeople, peopleGroups, peopleScan, personItem } from './people-board.js';
+import { SPELL_GROUPS as GROUPS, HELLO, allPhrases, spellGroupPrompt, spellLetterPrompt } from './phrases.js';
+import { createVoice } from './voice.js';
 
 const adminPage = /^\/admin\/?$/.test(location.pathname);
 
@@ -27,7 +30,6 @@ const PERSON_FOLLOW = [
   ['Pas maintenant', 'Tu préfères ne pas voir {n} pour l’instant ?'],
 ];
 const KINDS = ['Famille', 'Amis', 'Équipe', 'Rencontres'];
-const GROUPS = [['E', 'S', 'A', 'I', 'N', 'T', 'R', 'U', 'L'], ['O', 'D', 'C', 'M', 'P', 'G', 'B', 'V', 'H'], ['F', 'Q', 'J', 'X', 'Y', 'Z', 'K', 'W', '’'], ['ESPACE', 'EFFACER', 'TERMINER', 'ANNULER']];
 
 const GESTURES = 'Tête à gauche = oui · tête à droite = non · pencher 1 s = parler';
 
@@ -127,20 +129,20 @@ const iconFor = t => {
   return document.getElementById('i-' + icon) ? icon : 'autre';
 };
 const fmtT = ts => new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-const avatar = p => `<span class="av" style="background:hsl(${hue(p.name)} 38% 42%)">${esc(p.name.replace(/^Dr\.? /, '').slice(0, 1))}</span>`;
+const avatar = p => p.photo ? `<img class="av" src="${esc(p.photo)}" alt="">`
+  : `<span class="av" style="background:hsl(${hue(p.name)} 38% 42%)">${esc(p.name.replace(/^Dr\.? /, '').slice(0, 1))}</span>`;
 const name = () => S?.patientName || 'Anna';
-function personTheme(p) { return (S.themes.find(t => t.dynamic && t.peopleKinds.includes(p.kind)) || S.themes.find(t => t.dynamic))?.id; }
 function toast(msg) { const d = document.createElement('div'); d.className = 'toast'; d.setAttribute('role', 'status'); d.textContent = msg; document.body.appendChild(d); setTimeout(() => d.remove(), 2800); }
 // Le « Oui » / « Non » d'Anna est toujours dit à voix haute : c'est sa voix pour les personnes autour d'elle.
 // La phrase suivante (question, résumé) attend la fin du mot au lieu de le couper.
+// Voix enregistrée (ElevenLabs) quand la phrase l’est, sinon la voix du navigateur.
+const voiceOut = createVoice();
 let answerSaidAt = 0;
-function sayAnswer(a) {
-  if (!('speechSynthesis' in window)) return;
-  try { speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(a === 'oui' ? 'Oui' : 'Non'); u.lang = 'fr-FR'; u.rate = 0.95; speechSynthesis.speak(u); answerSaidAt = Date.now(); } catch { /* voix indisponible */ }
-}
+function sayAnswer(a) { answerSaidAt = Date.now(); voiceOut.say(a === 'oui' ? 'Oui' : 'Non'); }
+// Une ou plusieurs phrases, dites dans l’ordre.
 function speak(t, force) {
-  if ((!voice && !force) || !('speechSynthesis' in window)) return;
-  try { if (Date.now() - answerSaidAt > 1500) speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(t); u.lang = 'fr-FR'; u.rate = 0.95; speechSynthesis.speak(u); } catch { /* voix indisponible */ }
+  if (!voice && !force) return;
+  voiceOut.say(t, { queue: Date.now() - answerSaidAt < 1500 });
 }
 function chime() {
   try {
@@ -186,10 +188,28 @@ function top3() {
   return topQuestions(S.bank, S.stats, { answer: moodAnswer(), context: S.settings.context })
     .map(o => ({ kind: 'item', t: theme(o.themeId), it: { id: o.nodeId, l: o.label, q: o.q } }));
 }
-function showHello() { F = { mode: 'hello', id: crypto.randomUUID(), t0: Date.now() }; undo = []; render(); speak('Coucou, est-ce que tu veux parler ?'); }
+function showHello() { F = { mode: 'hello', id: crypto.randomUUID(), t0: Date.now() }; undo = []; render(); speak(HELLO); }
 function showWelcome() { F = { mode: 'welcome', id: crypto.randomUUID(), t0: Date.now() }; undo = []; render(); speak(S.bank.root.q); }
 function startItem(themeId, id) { startBank(id); }
-function personItem(t, p) { return { id: `${t.id}.${p.id}`, l: p.name, q: `C’est à propos de ${p.name} ?`, person: p.id }; }
+// Partir d’un nom : Anna le dit, puis on lui propose ce qu’elle veut faire avec cette personne.
+function startPerson(id) {
+  const p = S.people.find(x => x.id === id); if (!p) return;
+  const it = personItem(p);
+  F = { mode: 'q', theme: 'personnes', stack: [{ list: [it], idx: 0 }, { list: it.then, idx: 0 }], path: ['Entourage', p.name], summaryText: it.yesText, about: p.id, priv: false, t0: Date.now() };
+  undo = []; announce(p);
+}
+function startPeopleScan(group = '') {
+  const list = peopleScan(S.people).filter(g => !group || g.id === `personnes.${group}`);
+  if (!list.length) return;
+  F = { mode: 'q', theme: 'personnes', stack: [{ list: list.length === 1 ? list[0].then : list, idx: 0 }], path: ['Entourage'], priv: false, t0: Date.now() };
+  undo = []; showQ();
+}
+// La phrase « C’est à propos de … » est la voix d’Anna : toujours dite, comme ses Oui / Non.
+function announce(p) {
+  F.about = p.id; render();
+  if (voice) speak([aboutText(p), cur().q], true); else speak(aboutText(p), true);
+}
+function openPeople(group = '') { F = { mode: 'home' }; undo = []; boardTheme = PEOPLE; peopleGroup = group; themePage = 0; render(); }
 
 /* ================================================================ déroulé des questions */
 const cur = () => { const top = F.stack[F.stack.length - 1]; return top.list[top.idx]; };
@@ -218,7 +238,7 @@ function answer(a) {
   if (INTRO.includes(F.mode) && a !== 'parler') {
     flash(a); sayAnswer(a);
     if (F.mode === 'rest') { if (a === 'oui') showHello(); return; }
-    const hello = F.mode === 'hello', q = hello ? 'Coucou, est-ce que tu veux parler ?' : S.bank.root.q;
+    const hello = F.mode === 'hello', q = hello ? HELLO : S.bank.root.q;
     logAnswer(hello ? 'intro:hello' : S.bank.root.id, q, a, F.id, 'accueil', F.t0);
     recordConversation('intro', { themeId: 'accueil', path: [q, a === 'oui' ? 'Oui' : 'Non'], text: `${q} ${a === 'oui' ? 'Oui' : 'Non'}` });
     if (hello) { if (a === 'oui') return showWelcome(); F = { mode: 'rest' }; return render(); }
@@ -234,9 +254,15 @@ function answer(a) {
   if (F.mode === 'spell') return spellAnswer(a);
   if (F.mode === 'deeper') {
     F.entryNotes.push([F.dq, a]);
+    if (!F.priv && F.dqId) logAnswer(`suivi:${F.dqId}`, F.dq, a, F.id || crypto.randomUUID(), F.theme || 'accueil', F.qTs);
     F.mode = 'done'; render(); return;
   }
-  if (F.mode === 'done' && F.hierarchy) { if (a === 'oui') startBank(); else goHome(); return; }
+  if (F.mode === 'done' && F.hierarchy) {
+    if (a !== 'oui') return goHome();
+    const category = doneCategory();
+    return category ? startBank(category.id, { inside: true }) : startBank();
+  }
+  if (F.mode === 'done' && F.theme === 'personnes') { if (a === 'oui') openPeople(); else goHome(); return; }
   if (F.mode === 'done') { if (a === 'oui') { (F.theme === 'scan' || F.theme === 'parler' || F.quick) ? startScan() : startTheme(F.theme); } else goHome(); return; }
   if (F.mode !== 'q') return;
   undo.push(JSON.stringify(F));
@@ -246,7 +272,12 @@ function answer(a) {
     F.path.push(it.l); if (it.private) F.priv = true; if (it.urgent) F.urgent = true;
     if (it.action === 'spell') return startSpell(F.path.slice());
     const th = it.then === '@i' ? INTENS : it.then;
-    if (th && th.length) { F.stack.push({ list: th === INTENS ? INTENS : ordered(th), idx: 0 }); return showQ(); }
+    if (th && th.length) {
+      F.stack.push({ list: th === INTENS ? INTENS : ordered(th), idx: 0 });
+      if (it.yesText) F.summaryText = it.yesText;
+      return it.person ? announce(S.people.find(p => p.id === it.person)) : showQ();
+    }
+    if (it.yesText) F.summaryText = it.yesText;
     return conclude('resolu', it);
   }
   const top = F.stack[F.stack.length - 1]; top.idx++;
@@ -265,6 +296,7 @@ function conclude(result, it) {
   if (F.urgent) chime();
 }
 function back() {
+  if (F.mode === 'deeper') { F.mode = 'done'; return render(); }
   if (F.hierarchy) { const previous = undo.pop(); if (!previous) return goHome(); F = JSON.parse(previous); F.qTs = Date.now(); render(); speak(F.hierarchy.current.q); return; }
   if (F.mode === 'home' && boardTheme) { const parent = findEntry(S.bank, boardTheme)?.parent; boardTheme = parent?.level === 'master' ? null : parent?.id; themePage = 0; return render(); }
   if (F.mode === 'spell' || F.mode === 'home') return goHome();
@@ -274,10 +306,11 @@ function back() {
 }
 
 /* Parcours des cinq niveaux de la banque CSV. */
-function startBank(targetId = null) {
+function startBank(targetId = null, { inside = false } = {}) {
   const answer = moodAnswer(), context = S.settings.context;
   if (!targetId && answer) targetId = availableChildren(S.bank.root, answer, context)[0]?.id;
-  const hierarchy = targetId ? startAtHierarchy(S.bank, targetId, { context, answer }) : startHierarchy(S.bank, { context });
+  const start = inside ? startInsideHierarchy : startAtHierarchy;
+  const hierarchy = targetId ? start(S.bank, targetId, { context, answer }) : startHierarchy(S.bank, { context });
   F = { mode: 'hierarchy', hierarchy, theme: 'scan', path: hierarchy.path.map(n => n.label), priv: false,
     id: crypto.randomUUID(), t0: Date.now(), qTs: Date.now(), n: 0 };
   undo = [];
@@ -298,6 +331,7 @@ function answerBank(answer) {
   }
   F.qTs = Date.now(); render(); speak(F.hierarchy.current.q);
 }
+const doneCategory = () => F.hierarchy?.path.find(n => n.level === 'category');
 function renderBankQuestion() {
   const flow = F.hierarchy, node = flow.current, frame = flow.frames.at(-1);
   return `<div class="qv">${crumbs()}<span class="pill">${LEVEL_NAMES[LEVELS.indexOf(node.level)]}</span>
@@ -306,8 +340,8 @@ function renderBankQuestion() {
 }
 
 /* épellation lettre par lettre */
-function startSpell(ctx) { F = { mode: 'spell', ctx: ctx || ['Message'], g: 0, l: null, text: '', priv: !!F.priv, theme: (F.theme && F.theme !== 'scan') ? F.theme : 'parler', id: crypto.randomUUID(), t0: Date.now() }; render(); speak('On épelle. ' + spellQ()); }
-const spellQ = () => F.l === null ? `Lettre dans : ${GROUPS[F.g].join(' ')} ?` : `« ${GROUPS[F.g][F.l]} » ?`;
+function startSpell(ctx) { F = { mode: 'spell', ctx: ctx || ['Message'], g: 0, l: null, text: '', priv: !!F.priv, theme: (F.theme && F.theme !== 'scan') ? F.theme : 'parler', id: crypto.randomUUID(), t0: Date.now() }; render(); speak(['On épelle.', spellQ()]); }
+const spellQ = () => F.l === null ? spellGroupPrompt(GROUPS[F.g]) : spellLetterPrompt(GROUPS[F.g][F.l]);
 function spellPick(g, l) {
   const v = GROUPS[g][l];
   if (v === 'ESPACE') F.text += ' ';
@@ -339,7 +373,7 @@ function talk() {
     <div class="row">
       <button class="btn primary" data-ov="spell">${ic('spell')} Épeler</button>
       <button class="btn" data-ov="scan">${ic('scan')} Les thèmes</button>
-      <button class="btn" data-ov="proches">${ic('proches')} Un proche</button>
+      <button class="btn" data-ov="proches">${ic('proches')} Une personne</button>
       <button class="btn" data-ov="close">Fermer</button>
     </div></div></div>`;
 }
@@ -349,7 +383,7 @@ document.addEventListener('click', e => {
   const k = b.dataset.ov; closeOv();
   if (k === 'close') return render();
   view = 'patient';
-  if (k === 'spell') startSpell(['Message']); else if (k === 'scan') startScan(); else if (k === 'proches') startTheme('proches');
+  if (k === 'spell') startSpell(['Message']); else if (k === 'scan') startScan(); else if (k === 'proches') openPeople();
 });
 
 /* ================================================================ rendu : vue d'Anna */
@@ -363,6 +397,7 @@ function render() {
   if (view === 'admin') { m.innerHTML = renderAdmin(); bindAdmin(); return; }
   m.innerHTML = F.mode === 'hello' ? renderHello() : F.mode === 'rest' ? renderRest() : F.mode === 'welcome' ? renderWelcome() : F.mode === 'hierarchy' ? renderBankQuestion() : F.mode === 'home' ? renderBoard() : F.mode === 'q' ? renderQ() : F.mode === 'done' ? renderDone() : F.mode === 'deeper' ? renderDeeper() : renderSpell();
   m.scrollTop = 0;
+  if (F.mode === 'home') fitLabels(m);
 }
 function renderTop() {
   const now = new Date(), nav = view === 'patient' && F.mode !== 'home';
@@ -386,7 +421,8 @@ function renderSync() {
 // Accueil pensé pour le téléphone, sans surcharge et sans défilement :
 // une ligne par thème = le thème, ses 3 pictogrammes les plus importants (moteur de recommandation)
 // et « + » pour le reste. Autant de lignes que l'écran en permet, puis Page suivante / Page précédente.
-let boardPage = 0, boardTheme = null, themePage = 0;
+let boardPage = 0, boardTheme = null, themePage = 0, peopleGroup = '';
+const PEOPLE = '__personnes';
 const pic = (attrs, icon, label, h, extra = '') => `<button class="pic ${extra}" style="--h:${h}" ${attrs}>${icon}<span>${esc(label)}</span></button>`;
 const pager = (page, pages, prev, next) => pages > 1 ? `<nav class="pager" aria-label="Pages">
     <button class="btn" data-act="${prev}" ${page === 0 ? 'disabled' : ''}>${ic('gauche')} Précédente</button>
@@ -403,11 +439,24 @@ function nodePic(node, h) {
   const action = ['category', 'subcategory'].includes(node.level) ? `data-browse="${esc(node.id)}"` : `data-item="${esc(node.id)}"`;
   return pic(action, bankIcon(node), node.label, h);
 }
+const personPic = (p, h) => `<button class="pic person" style="--h:${h}" data-person="${esc(p.id)}">${avatar(p)}<span>${esc(p.name)}</span>${p.role ? `<small>${esc(p.role)}</small>` : ''}</button>`;
+const phoneRows = () => matchMedia('(max-width:559px)').matches;
+// Un mot trop long pour sa tuile n’est jamais coupé : on réduit la taille du texte, jusqu’à 10 px.
+function fitLabels(root) {
+  for (const label of root.querySelectorAll('.pic > span, .tlab > span')) {
+    label.style.fontSize = '';
+    let size = parseFloat(getComputedStyle(label).fontSize);
+    while (size > 10 && (label.scrollWidth > label.clientWidth + 1 || label.scrollHeight > label.clientHeight + 1)) {
+      label.style.fontSize = `${--size}px`;
+    }
+  }
+}
 function boardSpace() { return Math.max(160, ($('#main')?.clientHeight || 600) - 24); }
 function renderBoard() {
+  if (boardTheme === PEOPLE) return renderPeoplePage();
   if (boardTheme && findEntry(S.bank, boardTheme)) return renderThemePage();
   boardTheme = null;
-  const avail = boardSpace(), rowH = avail > 700 ? 124 : 104;   // lignes hautes : lisibles par la personne qui tient le téléphone
+  const avail = boardSpace(), rowH = (avail > 700 ? 124 : 104) + (phoneRows() ? 26 : 0);   // lignes hautes : lisibles par la personne qui tient le téléphone ; + l’en-tête du thème sur téléphone
   const note = MOOD[mood]?.note && boardPage === 0 ? `<p class="moodnote ${mood}">${ic(mood === 'ko' ? 'douleur' : 'content')} ${esc(MOOD[mood].note)}</p>` : '';
   const perPage = Math.max(1, Math.floor((avail - 64 - (MOOD[mood]?.note ? 40 : 0)) / rowH));   // Réserver le même espace sur toutes les pages.
   topCache = top3();
@@ -420,7 +469,12 @@ function renderBoard() {
     }
     return pic(`data-top="${i}"`, bankIcon(findEntry(S.bank, o.it.id).node), o.it.l, typeOf(o.t.group).h, 'hot');
   }).join('')}${pic('data-act="scan"', ic('scan'), 'Tout parcourir', 40)}</div>`;
-  const rows = [topRow, ...categoryRows(S.bank, moodAnswer(), S.settings.context).map(({ category, children }) => {
+  const people = orderedPeople(S.people), peopleH = 330;
+  const peopleRow = people.length ? `<div class="trow" style="--h:${peopleH}">
+      <button class="tlab" data-act="people">${ic('proches')}<span>Entourage</span></button>
+      ${people.slice(0, 3).map(p => personPic(p, peopleH)).join('')}${'<span></span>'.repeat(Math.max(0, 3 - people.length))}
+      ${pic('data-act="people"', `<b class="plus">${people.length > 3 ? `+${people.length - 3}` : ''}</b>`, 'Voir tout', peopleH, 'more')}</div>` : '';
+  const rows = [topRow, ...(peopleRow ? [peopleRow] : []), ...categoryRows(S.bank, moodAnswer(), S.settings.context).map(({ category, children }) => {
     const h = category.hue ?? hue(category.id);
     const more = children.length > 3 ? pic(`data-browse="${esc(category.id)}"`, `<b class="plus">+${children.length - 3}</b>`, 'Voir plus', h, 'more') : '<span></span>';
     return `<div class="trow" style="--h:${h}">
@@ -483,16 +537,35 @@ function renderThemePage() {
     ${all.length ? `<div class="pgrid" style="grid-template-columns:repeat(${cols},minmax(0,1fr));grid-template-rows:repeat(${rows},minmax(0,1fr))">${all.slice(themePage * per, (themePage + 1) * per).join('')}</div>` : `<p class="empty">${esc(node.q)}</p><button class="btn" data-item="${esc(node.id)}">Poser la question</button>`}
     ${pager(themePage, pages, 'prevTheme', 'nextTheme')}</div>`;
 }
+// Toutes les personnes autour d’Anna, par groupe, sans passer par une question.
+function renderPeoplePage() {
+  const groups = peopleGroups(S.people), h = 330;
+  if (!groups.some(g => g.key === peopleGroup)) peopleGroup = '';
+  const all = (peopleGroup ? groups.filter(g => g.key === peopleGroup) : groups).flatMap(g => g.people).map(p => personPic(p, h));
+  const avail = boardSpace(), w = $('#main')?.clientWidth || 360;
+  const cols = w >= 900 ? 5 : w >= 560 ? 4 : 3, rows = Math.max(1, Math.floor((avail - 170) / (avail > 700 ? 130 : 112)));
+  const per = cols * rows, pages = Math.max(1, Math.ceil(all.length / per));
+  themePage = Math.min(themePage, pages - 1);
+  return `<div class="page">
+    <div class="phead" style="--h:${h}"><button class="btn" data-browse="" aria-label="Catégories">${ic('back')}<span class="back-label"> Catégories</span></button><h2>${ic('proches')} Entourage</h2>
+      <button class="btn sm" data-act="peopleScan">${ic('scan')} Oui / non</button></div>
+    <div class="chips" role="group" aria-label="Groupe">${[['', 'Tous'], ...groups.map(g => [g.key, g.label])].map(([k, l]) => `<button data-pgroup="${k}" class="${peopleGroup === k ? 'cur' : ''}" aria-pressed="${peopleGroup === k}">${esc(l)}</button>`).join('')}</div>
+    <div class="pgrid" style="grid-template-columns:repeat(${cols},minmax(0,1fr));grid-template-rows:repeat(${rows},minmax(0,1fr))">${all.slice(themePage * per, (themePage + 1) * per).join('')}</div>
+    ${pager(themePage, pages, 'prevTheme', 'nextTheme')}</div>`;
+}
 addEventListener('resize', () => { if (view === 'patient' && F.mode === 'home' && S) render(); });
 const crumbs = () => `<div class="crumbs">${F.path.map(p => `<span class="c">${esc(p)}</span>`).join('<span>›</span>')}${F.priv ? `<span class="c lockb">${ic('intime')} Non enregistré</span>` : ''}</div>`;
 function renderQ() {
   const it = cur(), top = F.stack[F.stack.length - 1];
+  const about = F.about && S.people.find(p => p.id === F.about);
   return `<div class="qv">${crumbs()}
+    ${about ? `<p class="about">${avatar(about)}<span class="tag">${esc(name())} te dit</span><b>${esc(aboutText(about))}</b></p>` : ''}
     <h1 class="q">${esc(it.q)}</h1>
     <div class="qmeta"><span>${top.idx + 1} / ${top.list.length}</span>${it.urgent ? '<span class="pill u">Prioritaire</span>' : ''}<span>Hocher = oui · tourner = non · pencher 1 s = parler</span></div>
   </div>`;
 }
-const deeperList = () => (theme(F.theme)?.deeper || []).map(d => d.text);
+const deeperItems = () => F.hierarchy ? followUpsFor(F.hierarchy) : (theme(F.theme)?.deeper || []).map((d, i) => ({ id: `${F.theme}#${i + 1}`, q: d.text }));
+const deeperList = () => deeperItems().map(d => d.q);
 const parsePlan = () => (S.plan || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => {
   const m = l.match(/^(\d{1,2})[:h](\d{2})\s+(.*)$/); return m ? { t: m[1].padStart(2, '0') + ':' + m[2], label: m[3] } : null;
 }).filter(Boolean);
@@ -500,7 +573,7 @@ function renderDone() {
   const plan = F.action === 'planning' ? `<ul class="plist">${parsePlan().map(p => `<li><time>${p.t}</time>${esc(p.label)}</li>`).join('') || '<li class="muted">Aucun programme saisi.</li>'}</ul>` : '';
   const time = F.action === 'heure' ? `<p class="big" style="font-size:26px">${new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })} · ${fmtT(Date.now())}</p>` : '';
   const title = F.summaryText || (F.result === 'non-trouve' ? 'Besoin non trouvé' : F.result === 'message' ? '« ' + F.path[F.path.length - 1] + ' »' : (F.path.slice(1).join(' › ') || F.path[0]));
-  const asked = new Set(F.entryNotes.map(n => n[0])), dl = deeperList();
+  const asked = new Map(F.entryNotes.map(n => [n[0], n[1]])), dl = deeperList();
   const main = F.ask
     ? `<span class="tag">${esc(name())} ${F.say ? 'te dit' : 'te demande'}</span><p class="big ask">${esc(F.ask)}</p><div><button class="btn" data-act="reread">${ic('voice')} Relire à voix haute</button></div>`
     : `<span class="tag">${F.result === 'non-trouve' ? 'Pas dans la liste' : F.result === 'message' ? 'Message de ' + esc(name()) : esc(name()) + ' a exprimé'}</span><p class="big">${esc(title)}</p>`;
@@ -511,11 +584,11 @@ function renderDone() {
       ${F.result === 'non-trouve' ? `<div><button class="btn primary" data-act="spellctx">${ic('spell')} Épeler avec ${esc(name())}</button></div>` : ''}
       ${F.entryNotes.length ? `<ul class="notes">${F.entryNotes.map(([q, a]) => `<li><span>${esc(q)}</span><span class="${a === 'oui' ? 'ans-y' : 'ans-n'}">${a === 'oui' ? 'Oui' : 'Non'}</span></li>`).join('')}</ul>` : ''}
       <p class="next">Autre chose, ${esc(name())} ?</p>
-      <span class="muted" style="font-size:13.5px">${F.hierarchy ? 'Oui : recommencer · Non : pictogrammes' : 'Oui : continuer dans ce thème · Non : accueil'}</span>
+      <span class="muted" style="font-size:13.5px">${F.hierarchy ? (doneCategory() ? `Oui : autre chose dans « ${esc(doneCategory().label)} » · Non : pictogrammes` : 'Oui : recommencer · Non : pictogrammes') : 'Oui : continuer dans ce thème · Non : accueil'}</span>
     </div>
     ${dl.length ? `<div class="deeper"><h3>${ic('deeper')} Pour aller plus loin</h3>
       <p>Pour l’entourage : touche une question pour la poser à ${esc(name())}.</p>
-      <div class="dlist">${dl.map((q, i) => `<button data-deep="${i}" class="${asked.has(q) ? 'asked' : ''}">${esc(q)}</button>`).join('')}</div></div>` : ''}
+      <div class="dlist">${dl.map((q, i) => `<button data-deep="${i}" class="${asked.has(q) ? 'asked' : ''}"><span>${esc(q)}</span>${asked.has(q) ? `<b class="${asked.get(q) === 'oui' ? 'ans-y' : 'ans-n'}">${asked.get(q) === 'oui' ? 'Oui' : 'Non'}</b>` : ''}</button>`).join('')}</div></div>` : ''}
   </div>`;
 }
 const renderDeeper = () => `<div class="qv">${crumbs()}<span class="pill t" style="align-self:flex-start">Pour aller plus loin</span><h1 class="q">${esc(F.dq)}</h1></div>`;
@@ -537,8 +610,9 @@ $('#main').addEventListener('click', e => {
   if ((b = g('[data-cat]'))) { cat = b.dataset.cat; return render(); }
   if ((b = g('[data-category]'))) return startBank(b.dataset.category);
   if ((b = g('[data-theme]'))) return startTheme(b.dataset.theme);
-  if ((b = g('[data-person]'))) { const p = S.people.find(x => x.id === b.dataset.person), th = personTheme(p); return startTheme(th, `${th}.${p.id}`); }
-  if ((b = g('[data-deep]'))) { F.dq = deeperList()[+b.dataset.deep]; F.mode = 'deeper'; render(); speak(F.dq); return; }
+  if ((b = g('[data-person]'))) return startPerson(b.dataset.person);
+  if ((b = g('[data-pgroup]'))) { peopleGroup = b.dataset.pgroup; themePage = 0; return render(); }
+  if ((b = g('[data-deep]'))) { const d = deeperItems()[+b.dataset.deep]; Object.assign(F, { dq: d.q, dqId: d.id, qTs: Date.now(), mode: 'deeper' }); render(); speak(F.dq); return; }
   if ((b = g('[data-pick]'))) { const [x, y] = b.dataset.pick.split(',').map(Number); return spellPick(x, y); }
   if ((b = g('[data-act]'))) {
     const a = b.dataset.act;
@@ -552,7 +626,9 @@ $('#main').addEventListener('click', e => {
     if (a === 'prevPage') { boardPage = Math.max(0, boardPage - 1); return render(); }
     if (a === 'nextTheme') { themePage++; return render(); }
     if (a === 'prevTheme') { themePage = Math.max(0, themePage - 1); return render(); }
-    if (a === 'themeScan') return startTheme(b.dataset.th);
+    if (a === 'themeScan') return startBank(b.dataset.th, { inside: true });
+    if (a === 'people') return openPeople();
+    if (a === 'peopleScan') return startPeopleScan(peopleGroup);
     if (a === 'scan') startScan(); else if (a === 'spell') startSpell(['Message']); else if (a === 'plan') showPlan();
     else if (a === 'spellctx') startSpell([...F.path]); else if (a === 'reread') speak(F.ask, true);
   }
@@ -590,7 +666,7 @@ async function adm(action, payload, okMsg) {
 
 
 function renderAdmin() {
-  return `<div class="adm"><p class="muted local-notice">Questions partagées avec tous les utilisateurs.</p>
+  return `<div class="adm"><div class="history-head"><p class="muted local-notice">Questions partagées avec tous les utilisateurs.</p><button class="btn sm" id="logout">Se déconnecter</button></div>
     <div class="seg" role="tablist">${[['resume', 'Résumé'], ['questions', 'Questions'], ['personnes', 'Personnes'], ['reglages', 'Réglages']].map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" data-tab="${k}" class="${tab === k ? 'cur' : ''}">${l}</button>`).join('')}</div>
     ${tab === 'resume' ? admResume() : tab === 'questions' ? admQuestions() : tab === 'personnes' ? peopleEditor.render() : admSettings()}
   </div>`;
@@ -630,12 +706,47 @@ function admSettings() {
         <label class="fl">Lieu de la conversation<select id="context">${[['tous', 'Tous les lieux'], ['centre', 'Au centre'], ['domicile', 'Au domicile']].map(([v, label]) => `<option value="${v}" ${S.settings.context === v ? 'selected' : ''}>${label}</option>`).join('')}</select></label><p class="muted">Les questions suivent l’ordre défini dans la banque.</p>
         <label class="fl">Amplitude du mouvement de tête : <b id="sensV">${Math.round(S.settings.sens * 100)} %</b><input type="range" id="sens" min="0.5" max="1.6" step="0.05" value="${S.settings.sens}"></label>
       </div></div>
+    <div class="card"><h3>Voix naturelle</h3>
+      <p class="muted" id="voiceStatus" role="status" style="margin:0 0 10px">Vérification des enregistrements…</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" id="recordVoices" hidden>Enregistrer les phrases manquantes</button><button class="btn" id="testVoice">Écouter un exemple</button></div></div>
     <div class="card"><h3>Données</h3>
       <p class="muted" style="margin:0">Les questions et réglages sont partagés entre tous les appareils. L’utilisation alimente le Top 3. L’historique détaillé est réservé à l’admin.</p>
       <p style="margin:12px 0 0"><a href="/static/anna-qr-code.png" target="_blank" rel="noopener">QR code de la page publique</a></p></div>`;
 }
+// Pré-enregistrer toutes les phrases fixes, par petits lots pour rester sous la limite de temps du serveur.
+let recordingVoices = false;
+async function voiceStatus() {
+  const el = $('#voiceStatus'), button = $('#recordVoices'); if (!el) return;
+  const { configured, phrases } = await voiceOut.load();
+  const missing = allPhrases(S.bank, S.people, name()).filter(t => !phrases.has(t));
+  const total = allPhrases(S.bank, S.people, name()).length;
+  el.textContent = !configured
+    ? `Voix naturelle non configurée : ajoutez ELEVENLABS_API_KEY et ELEVENLABS_VOICE_ID dans Vercel, puis redéployez. La voix du navigateur est utilisée en attendant (${total - missing.length} / ${total} phrases déjà enregistrées).`
+    : missing.length ? `${total - missing.length} / ${total} phrases enregistrées. Les autres utilisent la voix du navigateur.` : `Les ${total} phrases sont enregistrées.`;
+  button.hidden = !configured || !missing.length || recordingVoices;
+  button.textContent = `Enregistrer les ${missing.length} phrases manquantes`;
+  return missing;
+}
+async function recordVoices() {
+  const missing = await voiceStatus(); if (!missing?.length) return;
+  recordingVoices = true; $('#recordVoices').hidden = true;
+  let done = 0, failed = 0;
+  try {
+    for (let i = 0; i < missing.length; i += 8) {
+      $('#voiceStatus').textContent = `Enregistrement… ${done} / ${missing.length}`;
+      const response = await fetch('/api/voices/record', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ phrases: missing.slice(i, i + 8) }) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Enregistrement impossible.');
+      done += data.recorded; failed += data.failed.length;
+    }
+  } catch (e) { toast(e.message); }
+  finally { recordingVoices = false; }
+  await voiceStatus();
+  if (failed) toast(`${failed} phrase(s) non enregistrée(s) : la voix du navigateur sera utilisée pour celles-ci.`);
+}
 function bindAdmin() {
   const m = $('#main'), on = (sel, ev, fn) => m.querySelectorAll(sel).forEach(el => el.addEventListener(ev, fn));
+  if (tab === 'reglages') { voiceStatus(); on('#recordVoices', 'click', recordVoices); on('#testVoice', 'click', () => { voiceOut.unlock(); voiceOut.say(HELLO); }); }
   if (tab === 'questions') bankEditor.bind(m);
   if (tab === 'personnes') peopleEditor.bind(m);
   const confirmOr = (id, fn) => { if (armed !== id) { armed = id; return render(); } fn(); };
@@ -644,6 +755,7 @@ function bindAdmin() {
   on('#refreshHistory', 'click', async e => { e.currentTarget.disabled = true; e.currentTarget.textContent = 'Actualisation…'; await loadActivity(); if (tab === 'resume') render(); });
   on('[data-pdel]', 'click', e => { const id = e.currentTarget.dataset.pdel; confirmOr(id, () => adm('delete-person', { id }, 'Personne retirée')); });
   on('#fP', 'submit', e => { e.preventDefault(); adm('add-person', { name: $('#pName').value, role: $('#pRole').value, kind: $('#pKind').value }, 'Personne ajoutée'); });
+  on('#logout', 'click', async () => { await fetch('/api/admin-logout', { method: 'POST', credentials: 'same-origin' }).catch(() => {}); location.assign('/admin'); });
   on('#savePlan', 'click', () => adm('save-plan', { plan: $('#plan').value }, 'Programme enregistré'));
   on('#context', 'change', e => adm('save-settings', { ...S.settings, context: e.target.value }, 'Lieu enregistré'));
   on('#sens', 'input', e => { $('#sensV').textContent = Math.round(e.target.value * 100) + ' %'; });
@@ -684,6 +796,8 @@ async function boot() {
   }
   document.title = `Parler avec ${name()}`;
   if (!adminPage) showHello(); else render();
+  voiceOut.load();
+  setInterval(() => voiceOut.load(), 5 * 60000);
   activity.flush().catch(() => {});
   setInterval(() => { const c = document.querySelector('.clock'); if (c) { const now = new Date(); c.textContent = now.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' }) + ' · ' + fmtT(now); } }, 30000);
 }

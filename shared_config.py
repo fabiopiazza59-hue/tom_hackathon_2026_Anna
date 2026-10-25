@@ -7,13 +7,16 @@ import os
 import re
 import unicodedata
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, model_validator, field_validator
 
 ROOT = Path(__file__).parent
 EMPTY_REVISION = '"empty"'
+# Photos are small JPEGs resized in the browser, kept in the config so they follow the same versioned writes.
+MAX_PHOTO = 60_000
+MAX_PHOTOS_TOTAL = 3_000_000
 LEVELS = ("master", "category", "subcategory", "question", "subquestion")
 
 
@@ -65,6 +68,7 @@ class QuestionNode(StrictModel):
     weekendOrder: int | None = Field(default=None, ge=0)
     oppositeId: str | None = Field(default=None, max_length=150)
     personId: str | None = Field(default=None, max_length=150)
+    followUps: list[Annotated[str, Field(min_length=1, max_length=300)]] = Field(default_factory=list, max_length=20)
     _days_valid = field_validator("days")(valid_days)
     _hours_valid = field_validator("peakHours")(valid_peak_hours)
 
@@ -125,6 +129,8 @@ class Person(StrictModel):
     days: str = Field(default="", max_length=120)
     weight: float = Field(default=1, ge=0)
     referent: bool = False
+    paused: bool = False
+    photo: str = Field(default="", max_length=MAX_PHOTO, pattern=r"^(data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2})?$")
     _days_valid = field_validator("days")(valid_days)
 
 
@@ -138,6 +144,8 @@ class SharedConfig(StrictModel):
         people = {p.id for p in self.people}
         if len(people) != len(self.people):
             raise ValueError("Identifiant de personne en double")
+        if sum(len(p.photo) for p in self.people) > MAX_PHOTOS_TOTAL:
+            raise ValueError("Photos trop volumineuses : retirez-en quelques-unes")
         def walk(node):
             if node.personId and node.personId not in people:
                 raise ValueError("Personne liée introuvable")

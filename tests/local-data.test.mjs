@@ -123,3 +123,27 @@ test('les parents et les ordres invalides sont refusés sans modifier la banque'
   await assert.rejects(edit(api, 'delete-node', { id: 'master' }));
   assert.equal(findEntry((await bootstrap(api)).bank, node.id).node.q, node.q);
 });
+
+test('la photo et la pause d’une personne sont enregistrées, une image non JPEG est refusée', async () => {
+  const { api } = setup();
+  const photo = 'data:image/jpeg;base64,/9j/4AAQSkZJRg==';
+  const { id } = await edit(api, 'add-person', { name: 'Exemple', kind: 'Amis', photo, paused: true });
+  let saved = (await bootstrap(api)).people.find(p => p.id === id);
+  assert.equal(saved.photo, photo);
+  assert.equal(saved.paused, true);
+  await edit(api, 'save-person', { id, name: 'Exemple', paused: false });
+  saved = (await bootstrap(api)).people.find(p => p.id === id);
+  assert.equal(saved.photo, photo, 'modifier sans toucher à la photo la conserve');
+  assert.equal(saved.paused, false);
+  await assert.rejects(edit(api, 'save-person', { id, name: 'Exemple', photo: 'data:image/svg+xml;base64,PHN2Zz4=' }), /Photo invalide/);
+  await assert.rejects(edit(api, 'save-person', { id, name: 'Exemple', photo: 'data:image/jpeg;base64,' + 'A'.repeat(60000) }), /Photo invalide/);
+});
+
+test('les questions de suivi se modifient dans l’admin, une par ligne', async () => {
+  const { api } = setup();
+  const node = findEntry((await bootstrap(api)).bank, 'subcat:boire').node;
+  assert.ok(node.followUps.length);
+  await edit(api, 'save-node', { ...node, followUps: ' Tu veux de l’eau ?\n\nTu veux un jus ? ' });
+  assert.deepEqual(findEntry((await bootstrap(api)).bank, 'subcat:boire').node.followUps, ['Tu veux de l’eau ?', 'Tu veux un jus ?']);
+  await assert.rejects(edit(api, 'save-node', { ...node, followUps: Array.from({ length: 21 }, (_, i) => `Q${i} ?`).join('\n') }), /20 au maximum/);
+});

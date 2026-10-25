@@ -16,7 +16,9 @@ def replacement(current, source):
     bank = import_bank(source)
     # The master question has no CSV row, so retain its admin edits.
     bank["root"].update({k: v for k, v in current["bank"]["root"].items() if k != "children"})
-    people = import_people(source)
+    # Photos and pauses are only set in the admin, so keep them for people still in the CSV.
+    kept = {p["id"]: p for p in current.get("people", [])}
+    people = [p | {k: kept[p["id"]][k] for k in ("photo", "paused") if k in kept.get(p["id"], {})} for p in import_people(source)]
     # The five supplied CSVs are the new authoritative dataset; the archive retains older rows.
     return SharedConfig.model_validate({**current, "bank": bank, "people": people}).export()
 

@@ -1,0 +1,107 @@
+id,element_id,ordre,question
+douleur_1,subcat:douleur,1,C'est une douleur forte ?
+douleur_2,subcat:douleur,2,Ça fait mal depuis longtemps ?
+douleur_3,subcat:douleur,3,Ça fait plus mal quand on te bouge ?
+douleur_4,subcat:douleur,4,Tu veux qu'on prévienne l'infirmière ?
+douleur_5,subcat:douleur,5,Tu veux un médicament contre la douleur ?
+mal_dos_1,q:mal_dos,1,Tu veux qu'on change ta position ?
+mal_ventre_1,q:mal_ventre,1,Tu as envie d'aller aux toilettes ?
+mal_ventre_2,q:mal_ventre,2,Tu as envie de vomir ?
+mal_tete_1,q:mal_tete,1,Tu veux moins de bruit ?
+mal_tete_2,q:mal_tete,2,Tu veux moins de lumière ?
+mal_bouche_1,q:mal_bouche,1,Ça te gêne pour manger ?
+mal_dents_1,q:mal_dents,1,Ça te gêne pour manger ?
+installation_1,subcat:installation,1,Tu es mal installée en ce moment ?
+installation_2,subcat:installation,2,Tu veux un coussin ?
+installation_3,subcat:installation,3,Tu as mal à cause de ta position ?
+installation_4,subcat:installation,4,Tu veux qu'on t'aide tout de suite ?
+gene_1,subcat:gene,1,Ça te gêne beaucoup ?
+gene_2,subcat:gene,2,Ça te gêne depuis longtemps ?
+gene_3,subcat:gene,3,Tu veux qu'on s'en occupe tout de suite ?
+trop_chaud_1,q:trop_chaud,1,Tu veux boire de l'eau fraîche ?
+trop_chaud_2,q:trop_chaud,2,Tu veux qu'on ouvre la fenêtre ?
+trop_chaud_3,q:trop_chaud,3,Tu veux enlever un vêtement ?
+trop_froid_1,q:trop_froid,1,Tu veux une couverture ?
+trop_froid_2,q:trop_froid,2,Tu veux qu'on ferme la fenêtre ?
+trop_froid_3,q:trop_froid,3,Tu veux mettre un gilet ?
+trop_bruit_1,q:trop_bruit,1,Tu veux aller dans un endroit plus calme ?
+trop_bruit_2,q:trop_bruit,2,Tu veux qu'on ferme la porte ?
+manger_1,subcat:manger,1,Tu veux manger maintenant ?
+manger_2,subcat:manger,2,Tu veux quelque chose de sucré ?
+manger_3,subcat:manger,3,Tu veux quelque chose de salé ?
+manger_4,subcat:manger,4,Tu veux juste un petit goûter ?
+boire_1,subcat:boire,1,Tu veux boire maintenant ?
+boire_2,subcat:boire,2,Tu veux une boisson fraîche ?
+boire_3,subcat:boire,3,Tu veux une boisson chaude ?
+repos_1,subcat:repos,1,Tu veux aller dans ton lit ?
+repos_2,subcat:repos,2,Tu veux qu'on éteigne la lumière ?
+repos_3,subcat:repos,3,Tu as mal dormi cette nuit ?
+repos_4,subcat:repos,4,Tu veux qu'on te laisse tranquille ?
+bien_1,subcat:bien,1,Tu veux le dire à quelqu'un ?
+bien_2,subcat:bien,2,Tu veux recommencer une autre fois ?
+bien_3,subcat:bien,3,Tu veux qu'on le raconte à ta famille ?
+difficile_1,subcat:difficile,1,C'est à cause de quelqu'un ?
+difficile_2,subcat:difficile,2,C'est à cause de quelque chose qui s'est passé aujourd'hui ?
+difficile_3,subcat:difficile,3,Tu veux en parler maintenant ?
+difficile_4,subcat:difficile,4,Tu veux un câlin ?
+difficile_5,subcat:difficile,5,Tu veux qu'on prévienne ta famille ?
+ennui_1,subcat:ennui,1,Tu veux faire une activité ?
+ennui_2,subcat:ennui,2,Tu veux écouter de la musique ?
+ennui_3,subcat:ennui,3,Tu veux qu'on reste avec toi ?
+ennui_4,subcat:ennui,4,Tu veux voir les copains ?
+probleme_1,subcat:probleme,1,C'est urgent ?
+probleme_2,subcat:probleme,2,C'est à cause de quelqu'un ?
+probleme_3,subcat:probleme,3,Tu veux qu'on appelle quelqu'un ?
+probleme_4,subcat:probleme,4,Tu veux en parler sans les autres ?
+contacter_1,subcat:contacter,1,Tu veux l'appeler maintenant ?
+contacter_2,subcat:contacter,2,Tu veux lui envoyer un message ?
+contacter_3,subcat:contacter,3,Tu as quelque chose de précis à lui dire ?
+contacter_4,subcat:contacter,4,C'est pour une bonne nouvelle ?
+voir_1,subcat:voir,1,Tu veux voir cette personne aujourd'hui ?
+voir_2,subcat:voir,2,Cette personne te manque ?
+voir_3,subcat:voir,3,Tu veux qu'on organise une visite ?
+parler_1,subcat:parler,1,Tu veux parler maintenant ?
+parler_2,subcat:parler,2,C'est important ?
+parler_3,subcat:parler,3,Tu veux en parler sans les autres ?
+compagnie_1,subcat:compagnie,1,Tu veux de la compagnie maintenant ?
+compagnie_2,subcat:compagnie,2,Tu veux quelqu'un en particulier ?
+compagnie_3,subcat:compagnie,3,Tu te sens seule ?
+seule_1,subcat:seule,1,Tu veux être seule longtemps ?
+seule_2,subcat:seule,2,Tu veux qu'on revienne te voir plus tard ?
+seule_3,subcat:seule,3,Tu veux qu'on éteigne la lumière ?
+ecouter_regarder_1,subcat:ecouter_regarder,1,Tu veux le faire maintenant ?
+ecouter_regarder_2,subcat:ecouter_regarder,2,Tu veux le son plus fort ?
+ecouter_regarder_3,subcat:ecouter_regarder,3,Tu veux quelque chose que tu connais déjà ?
+detente_1,subcat:detente,1,Tu veux le faire maintenant ?
+detente_2,subcat:detente,2,Tu veux de la musique douce en même temps ?
+ateliers_1,subcat:ateliers,1,Tu veux y aller aujourd'hui ?
+ateliers_2,subcat:ateliers,2,Tu veux y aller avec les copains ?
+ateliers_3,subcat:ateliers,3,Tu as aimé le dernier atelier ?
+balade_1,subcat:balade,1,Tu veux sortir maintenant ?
+balade_2,subcat:balade,2,Tu veux qu'on t'habille plus chaudement ?
+balade_3,subcat:balade,3,Tu veux une longue balade ?
+sorties_1,subcat:sorties,1,Tu veux y aller bientôt ?
+sorties_2,subcat:sorties,2,Tu veux y aller avec ta famille ?
+sorties_3,subcat:sorties,3,Tu veux y aller avec les copains ?
+animaux_1,subcat:animaux,1,Tu veux les voir maintenant ?
+animaux_2,subcat:animaux,2,Tu veux les caresser ?
+animaux_3,subcat:animaux,3,Tu veux leur donner à manger ?
+evenements_1,subcat:evenements,1,Tu veux qu'on t'inscrive ?
+evenements_2,subcat:evenements,2,Tu veux y aller avec quelqu'un ?
+evenements_3,subcat:evenements,3,Tu veux qu'on t'en dise plus ?
+vacances_1,subcat:vacances,1,Tu veux en parler avec ta famille ?
+vacances_2,subcat:vacances,2,Tu veux partir bientôt ?
+vacances_3,subcat:vacances,3,Tu veux aller à la mer ?
+vacances_4,subcat:vacances,4,Tu veux aller à la montagne ?
+raconter_1,subcat:raconter,1,C'est arrivé aujourd'hui ?
+raconter_2,subcat:raconter,2,Tu veux le raconter maintenant ?
+raconter_3,subcat:raconter,3,Tu veux qu'on le dise à ta famille ?
+savoir_1,subcat:savoir,1,C'est important pour toi ?
+savoir_2,subcat:savoir,2,Tu veux qu'on te l'écrive ?
+savoir_3,subcat:savoir,3,Tu veux qu'on demande à quelqu'un ?
+mes_affaires_1,subcat:mes_affaires,1,Tu veux qu'on frappe avant d'entrer ?
+mes_affaires_2,subcat:mes_affaires,2,Tu veux être là quand on range tes affaires ?
+mes_affaires_3,subcat:mes_affaires,3,Tu veux qu'on te demande avant de toucher tes affaires ?
+mon_corps_accord_1,subcat:mon_corps_accord,1,Tu veux qu'on t'explique avant de te toucher ?
+mon_corps_accord_2,subcat:mon_corps_accord,2,Tu veux qu'on aille doucement ?
+mon_corps_accord_3,subcat:mon_corps_accord,3,Tu veux qu'on arrête quand tu dis non ?
