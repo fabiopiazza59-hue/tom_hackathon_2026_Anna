@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 import re
+import time
 from pathlib import Path
 
 import httpx
@@ -17,6 +18,8 @@ from shared_config import ROOT, BlobConfigStore, ConfigUnavailable, blob_credent
 
 MODEL = "eleven_multilingual_v2"
 MAX_PHRASE = 600
+# ElevenLabs refuses more parallel requests than the plan allows (2 on the free plan for this model).
+PARALLEL = 2
 KEY = re.compile(r"^[0-9a-f]{24}$")
 
 
@@ -37,20 +40,37 @@ def phrase_key(voice_id, model, text):
     return hashlib.sha256(f"{voice_id}\0{model}\0{text}".encode()).hexdigest()[:24]
 
 
-def synthesize(text, api_key, voice_id, model, transport=None):
+def elevenlabs_reason(response):
+    """ElevenLabs explains refusals in detail.status / detail.message: keep them for the admin."""
     try:
-        with httpx.Client(timeout=30, transport=transport) as client:
-            response = client.post(
-                f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
-                params={"output_format": "mp3_44100_64"},
-                headers={"xi-api-key": api_key, "Accept": "audio/mpeg"},
-                json={"text": text, "model_id": model},
-            )
-    except httpx.HTTPError:
-        raise VoiceUnavailable("ElevenLabs injoignable") from None
-    if response.status_code != 200 or not response.content:
-        raise VoiceUnavailable(f"ElevenLabs a refusé la demande ({response.status_code})")
-    return response.content
+        detail = response.json().get("detail")
+    except ValueError:
+        detail = None
+    if isinstance(detail, dict):
+        return " : ".join(str(detail[k]) for k in ("status", "message") if detail.get(k))[:300]
+    return str(detail)[:300] if detail else ""
+
+
+def synthesize(text, api_key, voice_id, model, transport=None, wait=time.sleep):
+    for attempt in range(4):
+        try:
+            with httpx.Client(timeout=30, transport=transport) as client:
+                response = client.post(
+                    f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+                    params={"output_format": "mp3_44100_64"},
+                    headers={"xi-api-key": api_key, "Accept": "audio/mpeg"},
+                    json={"text": text, "model_id": model},
+                )
+        except httpx.HTTPError:
+            raise VoiceUnavailable("ElevenLabs injoignable") from None
+        # Too many parallel requests or a busy service: wait a little and try again.
+        if response.status_code == 429 and attempt < 3:
+            wait(1.5 * (attempt + 1))
+            continue
+        if response.status_code == 200 and response.content:
+            return response.content
+        reason = elevenlabs_reason(response)
+        raise VoiceUnavailable(f"ElevenLabs a refusé la demande ({response.status_code}{' : ' + reason if reason else ''})")
 
 
 class FileVoiceStore:
@@ -110,7 +130,11 @@ class BlobVoiceStore:
         if response.status_code in (409, 412):
             return False
         if response.status_code not in (200, 201):
-            raise ConfigUnavailable()
+            try:
+                code = response.json().get("error", {}).get("code", "")
+            except ValueError:
+                code = ""
+            raise VoiceUnavailable(f"Le stockage Blob refuse l’enregistrement ({response.status_code}{' : ' + code if code else ''}).")
         return True
 
     def index(self, voice_id):
@@ -146,6 +170,10 @@ def record(store, phrases, transport=None):
     api_key, voice_id, model = voice_settings()
     if not api_key or not voice_id:
         raise VoiceUnavailable("Voix non configurée : ajoutez ELEVENLABS_API_KEY et ELEVENLABS_VOICE_ID.")
+    # The key list in ElevenLabs shows an ID that looks like a key; only the secret shown at creation works.
+    if not api_key.startswith("sk_"):
+        raise VoiceUnavailable("ELEVENLABS_API_KEY n’est pas une clé secrète ElevenLabs (elle commence par « sk_ ») : "
+                               "créez une nouvelle clé et copiez la valeur affichée à sa création.")
     index = store.index(voice_id)
     todo = [p for p in dict.fromkeys(phrases) if p not in index]
 
@@ -155,7 +183,7 @@ def record(store, phrases, transport=None):
         except VoiceUnavailable as exc:
             return text, exc
 
-    with ThreadPoolExecutor(max_workers=4) as pool:
+    with ThreadPoolExecutor(max_workers=PARALLEL) as pool:
         results = list(pool.map(one, todo))
     recordings = {phrase_key(voice_id, model, t): (t, audio) for t, audio in results if isinstance(audio, bytes)}
     failed = [{"text": t, "error": str(e)} for t, e in results if not isinstance(e, bytes)]

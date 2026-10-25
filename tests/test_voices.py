@@ -15,7 +15,7 @@ AUTH = ("admin-test", "password-test")
 def voice_env(tmp_path, monkeypatch):
     monkeypatch.setenv("ADMIN_USERNAME", AUTH[0])
     monkeypatch.setenv("ADMIN_PASSWORD", AUTH[1])
-    monkeypatch.setenv("ELEVENLABS_API_KEY", "test-key")
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "sk_test-key")
     monkeypatch.setenv("ELEVENLABS_VOICE_ID", "voice123")
     sent = []
 
@@ -100,3 +100,39 @@ def test_blob_store_merges_the_index_instead_of_overwriting_a_concurrent_save():
     assert index == {"Oui": "a" * 24, "Non": "b" * 24}
     assert files["anna/voices/v/" + "b" * 24 + ".mp3"] == b"mp3"
     assert [p for p in puts if p[0].endswith("index.json")] == [("anna/voices/v/index.json", '"e1"')] * 2
+
+
+def test_a_busy_elevenlabs_is_retried_then_its_reason_is_shown():
+    answers = iter([httpx.Response(429, json={"detail": {"status": "too_many_concurrent_requests"}}), httpx.Response(200, content=b"ID3ok")])
+    waits = []
+    assert voices.synthesize("Oui", "k", "v", voices.MODEL, httpx.MockTransport(lambda r: next(answers)), wait=waits.append) == b"ID3ok"
+    assert waits == [1.5]
+
+    refused = httpx.MockTransport(lambda r: httpx.Response(401, json={"detail": {"status": "quota_exceeded", "message": "You have 12 credits remaining."}}))
+    with pytest.raises(voices.VoiceUnavailable, match=r"\(401 : quota_exceeded : You have 12 credits remaining\.\)"):
+        voices.synthesize("Oui", "k", "v", voices.MODEL, refused)
+
+
+def test_never_more_parallel_requests_than_the_free_plan_allows(voice_env, monkeypatch, tmp_path):
+    import threading
+    running, peak, lock = 0, 0, threading.Lock()
+
+    def slow(text, *args, **kwargs):
+        nonlocal running, peak
+        with lock:
+            running += 1; peak = max(peak, running)
+        __import__("time").sleep(0.05)
+        with lock:
+            running -= 1
+        return b"mp3"
+
+    monkeypatch.setattr(voices, "synthesize", slow)
+    report = voices.record(FileVoiceStore(tmp_path / "v"), [f"Phrase {i}" for i in range(8)])
+    assert report["recorded"] == 8 and peak <= 2
+
+
+def test_a_key_id_pasted_instead_of_the_secret_key_is_explained(voice_env, monkeypatch):
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "a1b2c3d4e5f6")
+    response = TestClient(app).post("/api/voices/record", json={"phrases": ["Oui"]}, auth=AUTH)
+    assert response.status_code == 503 and "sk_" in response.json()["detail"]
+    assert voice_env == []  # ElevenLabs n’est même pas appelé.

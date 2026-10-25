@@ -730,7 +730,7 @@ async function voiceStatus() {
 async function recordVoices() {
   const missing = await voiceStatus(); if (!missing?.length) return;
   recordingVoices = true; $('#recordVoices').hidden = true;
-  let done = 0, failed = 0;
+  let done = 0, failed = 0, error = '';
   try {
     for (let i = 0; i < missing.length; i += 8) {
       $('#voiceStatus').textContent = `Enregistrement… ${done} / ${missing.length}`;
@@ -738,11 +738,14 @@ async function recordVoices() {
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Enregistrement impossible.');
       done += data.recorded; failed += data.failed.length;
+      // Rien n’est passé dans ce lot : inutile de continuer, on montre la raison donnée par ElevenLabs.
+      if (!data.recorded && data.failed.length) throw new Error(`Enregistrement arrêté. ${data.failed[0].error}`);
     }
-  } catch (e) { toast(e.message); }
+  } catch (e) { error = e.message; }
   finally { recordingVoices = false; }
   await voiceStatus();
-  if (failed) toast(`${failed} phrase(s) non enregistrée(s) : la voix du navigateur sera utilisée pour celles-ci.`);
+  if (error) { $('#voiceStatus').textContent += ` — ${error}`; toast(error); }
+  else if (failed) toast(`${failed} phrase(s) non enregistrée(s) : la voix du navigateur sera utilisée pour celles-ci.`);
 }
 function bindAdmin() {
   const m = $('#main'), on = (sel, ev, fn) => m.querySelectorAll(sel).forEach(el => el.addEventListener(ev, fn));
